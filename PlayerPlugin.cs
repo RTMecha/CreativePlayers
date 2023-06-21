@@ -20,7 +20,7 @@ using CreativePlayers.Functions.Data;
 
 namespace CreativePlayers
 {
-    [BepInPlugin("com.mecha.creativeplayers", "Creative Players", "1.0.0")]
+    [BepInPlugin("com.mecha.creativeplayers", "Creative Players", "1.0.1")]
 	[BepInIncompatibility("com.mecha.playereditor")]
     public class PlayerPlugin : BaseUnityPlugin
     {
@@ -46,7 +46,7 @@ namespace CreativePlayers
 
 			zenModeInEditor = Config.Bind("Game", "Zen Mode", false, "If enabled, the player will not take damage in the editor.");
 
-            harmony.PatchAll(typeof(PlayerPlugin));
+			harmony.PatchAll(typeof(PlayerPlugin));
             harmony.PatchAll(typeof(InputDataManagerPatch));
             harmony.PatchAll(typeof(GameManagerPatch));
             harmony.PatchAll(typeof(CustomPlayerPatch));
@@ -143,7 +143,7 @@ namespace CreativePlayers
 
 		public static void SaveLocalModels()
 		{
-			string location = RTFile.GetApplicationDirectory() + GameManager.inst.basePath + "players.lsb";
+			string location = RTFile.GetApplicationDirectory() + RTExtensions.basePath + "players.lsb";
 
 			var jn = JSON.Parse("{}");
 
@@ -174,7 +174,7 @@ namespace CreativePlayers
 
 		public static IEnumerator LoadLocalModels()
         {
-			string location = RTFile.GetApplicationDirectory() + GameManager.inst.basePath + "players.lsb";
+			string location = RTFile.GetApplicationDirectory() + RTExtensions.basePath + "players.lsb";
             if (RTFile.FileExists(location))
 			{
 				for (int i = 0; i < playerModels.Count; i++)
@@ -304,7 +304,7 @@ namespace CreativePlayers
 
 		public static void LoadIndexes()
         {
-			string location = RTFile.GetApplicationDirectory() + GameManager.inst.basePath + "players.lsb";
+			string location = RTFile.GetApplicationDirectory() + RTExtensions.basePath + "players.lsb";
 
 			if (RTFile.FileExists(location))
 			{

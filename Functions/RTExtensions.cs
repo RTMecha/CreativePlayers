@@ -25,6 +25,22 @@ namespace CreativePlayers.Functions
             
         }
 
+        //F:/PA_Builds/PA Launcher App/bin/Debug/net6.0-windows/4.1.16-BepInEx-5.4.21/beatmaps/story\CA - Ahead of the Curve [PAA3]\level.ogg
+        public static string basePath
+        {
+            get
+            {
+                if (!string.IsNullOrEmpty(GameManager.inst.basePath))
+                {
+                    return GameManager.inst.basePath;
+                }
+                else
+                {
+                    return SaveManager.inst.ArcadeQueue.AudioFileStr.Replace(RTFile.GetApplicationDirectory(), "").Replace("\\level.ogg", "").Replace("\\", "/");
+                }
+            }
+        }
+
         public static RTPlayer GetRTPlayer(this InputDataManager.CustomPlayer _customPlayer)
         {
             return PlayerPlugin.players.Find(x => x.playerIndex == _customPlayer.index);
