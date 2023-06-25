@@ -20,7 +20,7 @@ using CreativePlayers.Functions.Data;
 
 namespace CreativePlayers
 {
-    [BepInPlugin("com.mecha.creativeplayers", "Creative Players", "1.0.1")]
+    [BepInPlugin("com.mecha.creativeplayers", "Creative Players", "1.0.2")]
 	[BepInIncompatibility("com.mecha.playereditor")]
     public class PlayerPlugin : BaseUnityPlugin
     {
@@ -86,7 +86,7 @@ namespace CreativePlayers
 				objAssign = playerModels["0"].gm;
             }
 
-			GameObject gameObject = Instantiate(objAssign, new Vector3(_pos.x, _pos.y, -1f), Quaternion.identity);
+			GameObject gameObject = Instantiate(objAssign, new Vector3(0, 0, -6f), Quaternion.identity);
 			gameObject.layer = 8;
 			gameObject.name = "Player " + (_player.index + 1);
 			gameObject.SetActive(true);
@@ -137,6 +137,7 @@ namespace CreativePlayers
             }
 			players.Clear();
 			yield return new WaitForSeconds(0.1f);
+
 			GameManager.inst.SpawnPlayers(Vector3.zero);
 			yield break;
         }
@@ -160,10 +161,6 @@ namespace CreativePlayers
 					jn["models"].Add((i - 2).ToString(), PlayerData.SavePlayer(current));
 				}
 
-			if (!RTFile.FileExists(location))
-            {
-				File.Create(location);
-            }
 			RTFile.WriteToFile(location, jn.ToString());
 		}
 

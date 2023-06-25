@@ -66,7 +66,7 @@ namespace CreativePlayers.Patchers
 					PlayerPlugin.players.Add(player);
 
 					player.transform.SetParent(__instance.players.transform);
-					player.transform.localPosition = new Vector3(__0.x, __0.y, 0f);
+					player.transform.Find("Player").localPosition = new Vector3(__0.x, __0.y, 0f);
 					player.transform.localScale = Vector3.one;
 
 					if (EditorManager.inst == null)
