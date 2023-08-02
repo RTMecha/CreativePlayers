@@ -23,7 +23,7 @@ using RTFunctions.Functions;
 
 namespace CreativePlayers
 {
-    [BepInPlugin("com.mecha.creativeplayers", "Creative Players", "1.1.7")]
+    [BepInPlugin("com.mecha.creativeplayers", "Creative Players", "1.1.8")]
 	[BepInIncompatibility("com.mecha.playereditor")]
 	[BepInDependency("com.mecha.rtfunctions")]
 	[BepInProcess("Project Arrhythmia.exe")]
@@ -195,7 +195,7 @@ namespace CreativePlayers
 				player.Actions = (MyGameActions)AccessTools.Field(typeof(InputDataManager), "keyboardListener").GetValue(InputDataManager.inst);
 				player.isKeyboard = true;
 
-				if (EditorManager.inst != null)
+				if (EditorManager.inst != null && InputDataManager.inst.players.Count == 1)
                 {
 					player.faceController = FaceController.CreateWithBothBindings();
                 }
