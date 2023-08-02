@@ -10,7 +10,7 @@ using UnityEngine.UI;
 
 using InControl;
 using XInputDotNetPure;
-
+using TMPro;
 using DG.Tweening;
 
 using LSFunctions;
@@ -59,6 +59,9 @@ namespace CreativePlayers
         public Coroutine boostCoroutine;
 
         public GameObject canvas;
+
+        public TextMeshPro textMesh;
+        public MeshRenderer healthBase;
 
         public GameObject health;
 
@@ -590,7 +593,7 @@ namespace CreativePlayers
 
         private MyGameActions SetBindings(MyGameActions _actions)
         {
-            if (EditorManager.inst != null)
+            if (EditorManager.inst != null && InputDataManager.inst.players.Count < 2)
             {
                 MyGameActions myGameActions = _actions;
                 myGameActions.Up.AddDefaultBinding(InputControlType.DPadUp);
@@ -626,18 +629,14 @@ namespace CreativePlayers
             UpdateCustomTheme(); UpdateBoostTheme(); UpdateSpeeds();
             if (canvas != null)
             {
-                bool act = (EditorManager.inst == null || EditorManager.inst != null && !EditorManager.inst.isEditing) && InputDataManager.inst.players.Count > 1;
-                canvas.SetActive(act && PlayerPlugin.PlayerNameTags.Value);
+                bool act = InputDataManager.inst.players.Count > 1 && PlayerPlugin.PlayerNameTags.Value;
+                canvas.SetActive(act);
 
-                if (act && PlayerPlugin.PlayerNameTags.Value && playerObjects.ContainsKey("NameTag Text") && playerObjects.ContainsKey("NameTag Image") && playerObjects["NameTag Text"].values["Text"] != null && playerObjects["NameTag Image"].values["Image"] != null)
+                if (act && textMesh != null)
                 {
-                    Vector3 v = playerObjects["Head"].gameObject.transform.position + -(GameObject.Find("Camera Parent").transform.position + GameObject.Find("Camera Parent/cameras").transform.localPosition);
-                    canvas.transform.Find("Base").position = v * 27f;
-                    var text = (Text)playerObjects["NameTag Text"].values["Text"];
-                    text.text = "Player " + (playerIndex + 1).ToString() + " " + PlayerExtensions.ConvertHealthToEquals(InputDataManager.inst.players[playerIndex].health, initialHealthCount);
-                    text.color = GameManager.inst.LiveTheme.guiColor;
-
-                    ((Image)playerObjects["NameTag Image"].values["Image"]).color = LSColors.fadeColor(GameManager.inst.LiveTheme.guiColor, 0.3f);
+                    textMesh.text = "<#" + LSColors.ColorToHex(GameManager.inst.LiveTheme.playerColors[playerIndex % 4]) + ">Player " + (playerIndex + 1).ToString() + " " + PlayerExtensions.ConvertHealthToEquals(CustomPlayer.health, initialHealthCount);
+                    healthBase.material.color = LSColors.fadeColor(GameManager.inst.LiveTheme.playerColors[playerIndex % 4], 0.3f);
+                    healthBase.transform.localScale = new Vector3((float)initialHealthCount * 2.25f, 1.5f, 1f);
                 }
             }
 
@@ -1705,30 +1704,41 @@ namespace CreativePlayers
             var currentModel = PlayerPlugin.CurrentModel(playerIndex);
             var rb = (Rigidbody2D)playerObjects["RB Parent"].values["Rigidbody2D"];
 
-            //NameTag
+            //New NameTag
             {
                 Destroy(canvas);
-
-                canvas = PlayerExtensions.CreateCanvas("Name Tag Canvas " + (playerIndex + 1).ToString());
+                canvas = new GameObject("Name Tag Canvas" + (playerIndex + 1).ToString());
                 canvas.transform.SetParent(transform);
 
-                GameObject e = new GameObject("Base");
-                e.transform.SetParent(canvas.transform);
-                var image = PlayerExtensions.GenerateUIImage("Image", e.transform);
-                var text = PlayerExtensions.GenerateUIText("Text", ((GameObject)image["GameObject"]).transform);
+                var bae = Instantiate(ObjectManager.inst.objectPrefabs[0].options[0]);
+                bae.transform.SetParent(canvas.transform);
+                bae.transform.localScale = Vector3.one;
 
-                PlayerExtensions.SetRectTransform((RectTransform)image["RectTransform"], new Vector2(960f, 585f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(166f, 44f));
-                var component = (Text)text["Text"];
-                component.text = "Player " + (playerIndex + 1).ToString() + "[===]";
-                component.alignment = TextAnchor.MiddleCenter;
+                bae.transform.GetChild(0).transform.localScale = new Vector3(6.5f, 1.5f, 1f);
+                bae.transform.GetChild(0).transform.localPosition = new Vector3(0f, 2.5f, -0.3f);
 
-                ((RectTransform)text["RectTransform"]).sizeDelta = new Vector2(200f, 100f);
+                healthBase = bae.GetComponentInChildren<MeshRenderer>();
+                healthBase.enabled = true;
 
-                playerObjects.Add("NameTag Text", new PlayerObject("NameTag Text", (GameObject)text["GameObject"]));
-                playerObjects.Add("NameTag Image", new PlayerObject("NameTag Image", (GameObject)image["GameObject"]));
+                Destroy(bae.GetComponentInChildren<RTFunctions.Functions.Components.RTObject>());
+                Destroy(bae.GetComponentInChildren<SelectObjectInEditor>());
+                Destroy(bae.GetComponentInChildren<Collider2D>());
 
-                playerObjects["NameTag Text"].values.Add("Text", component);
-                playerObjects["NameTag Image"].values.Add("Image", (Image)image["Image"]);
+                var tae = Instantiate(ObjectManager.inst.objectPrefabs[4].options[0]);
+                tae.transform.SetParent(canvas.transform);
+                tae.transform.localScale = Vector3.one;
+
+                tae.transform.GetChild(0).transform.localScale = new Vector3(0.5f, 0.5f, 0.5f);
+                tae.transform.GetChild(0).transform.localPosition = new Vector3(0f, 2f, -0.3f);
+
+                textMesh = tae.GetComponentInChildren<TextMeshPro>();
+
+                var d = canvas.AddComponent<DelayTracker>();
+                d.leader = playerObjects["RB Parent"].gameObject.transform;
+                d.scaleParent = false;
+                d.rotationParent = false;
+                d.player = this;
+                d.positionOffset = 0.9f;
             }
 
             //Set new transform values
