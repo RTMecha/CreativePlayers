@@ -26,6 +26,27 @@ namespace CreativePlayers.Patchers
 			return false;
 		}
 
+		[HarmonyPatch("SetControllerRumble", new[] { typeof(int), typeof(float), typeof(float), typeof(bool) })]
+		[HarmonyPrefix]
+		private static bool SetControllerRumble(InputDataManager __instance, int __0, float __1, float __2, bool __3 = true)
+		{
+			foreach (var customPlayer in __instance.players)
+			{
+				if (customPlayer.device != null && customPlayer.GetRTPlayer() != null && customPlayer.GetRTPlayer().playerIndex == __0)
+				{
+					if (__3 && customPlayer.GetRTPlayer().PlayerAlive)
+					{
+						customPlayer.device.Vibrate(Mathf.Clamp(__1, 0f, 0.5f), Mathf.Clamp(__2, 0f, 0.5f));
+					}
+					else
+					{
+						customPlayer.device.Vibrate(Mathf.Clamp(__1, 0f, 0.5f), Mathf.Clamp(__2, 0f, 0.5f));
+					}
+				}
+			}
+			return false;
+		}
+
 		[HarmonyPatch("RemovePlayer")]
 		[HarmonyPrefix]
 		private static bool RemovePlayer(InputDataManager __instance, InputDataManager.CustomPlayer __0)

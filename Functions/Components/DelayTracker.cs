@@ -19,13 +19,25 @@ namespace CreativePlayers.Functions.Components
 		{
 			if (player != null && leader != null)
 			{
-				target = leader.position + offset * leader.transform.right;
-				float p = Time.deltaTime * 60f;
-				float num = 1f - Mathf.Pow(1f - followSharpness, p);
-				if (gameObject.name != "Player" && player.tailMode == 1)
+				float pitch = PlayerExtensions.Pitch;
+
+				if (player.rotateMode != RTPlayer.RotateMode.FlipX)
+					target = leader.position + offset * leader.transform.right;
+				else
+					target = leader.position + -offset * leader.transform.right;
+
+				float p = Time.deltaTime * 60f * pitch;
+				float po = 1f - Mathf.Pow(1f - Mathf.Clamp(positionOffset, 0.001f, 1f), p);
+				float so = 1f - Mathf.Pow(1f - Mathf.Clamp(scaleOffset, 0.001f, 1f), p);
+				float ro = 1f - Mathf.Pow(1f - Mathf.Clamp(rotationOffset, 0.001f, 1f), p);
+				if (gameObject.name != "Player" && (!gameObject.name.ToLower().Contains("tail") || player.tailMode == 1))
 				{
-					transform.position += (target - transform.position) * (num * AudioManager.inst.CurrentAudioSource.pitch);
-					transform.rotation = Quaternion.Lerp(transform.rotation, Quaternion.Euler(0f, 0f, leader.transform.rotation.eulerAngles.z), num * AudioManager.inst.CurrentAudioSource.pitch);
+					transform.position += (target - transform.position) * po;
+					if (rotationParent)
+						transform.rotation = Quaternion.Lerp(transform.rotation, Quaternion.Euler(0f, 0f, leader.transform.rotation.eulerAngles.z), ro);
+
+					if (scaleParent)
+						transform.localScale = Vector3.Lerp(transform.localScale, leader.localScale, so);
 				}
 			}
 		}
@@ -36,10 +48,15 @@ namespace CreativePlayers.Functions.Components
 
 		public Transform leader;
 
-		public float followSharpness = 0.1f;
+		public float positionOffset = 0.1f;
+		public float scaleOffset = 0.1f;
+		public float rotationOffset = 0.1f;
 
 		public float offset;
 
 		public Vector3 target;
+
+		public bool scaleParent = false;
+		public bool rotationParent = true;
 	}
 }

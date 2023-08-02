@@ -10,6 +10,13 @@ namespace CreativePlayers.Functions.Components
     public class PlayerSelector : MonoBehaviour
     {
         public int id;
+
+        private void Awake()
+        {
+            if (EditorManager.inst == null)
+                Destroy(this);
+        }
+
         public void OnMouseDown()
         {
             var playerEditor = GameObject.Find("PlayerEditorManager").GetComponentByName("CreativePlayersEditor");

@@ -4,7 +4,7 @@
     <TargetFramework>net46</TargetFramework>
     <AssemblyName>CreativePlayers</AssemblyName>
     <Description>Create your own custom player models to use in stories!</Description>
-    <Version>1.0.2</Version>
+    <Version>1.1.7</Version>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <LangVersion>latest</LangVersion>
   </PropertyGroup>
@@ -39,6 +39,10 @@
     <Reference Include="InControl">
       <HintPath>..\lib\InControl.dll</HintPath>
     </Reference>
+    <Reference Include="RTFunctions">
+      <HintPath>..\RTFunctions\bin\Debug\net46\RTFunctions.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Windows.Forms" />
     <Reference Include="Unity.Postprocessing.Runtime">
       <HintPath>..\lib\Unity.Postprocessing.Runtime.dll</HintPath>
     </Reference>

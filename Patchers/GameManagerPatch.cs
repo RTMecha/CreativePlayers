@@ -15,7 +15,7 @@ namespace CreativePlayers.Patchers
 	{
 		[HarmonyPatch("Start")]
 		[HarmonyPostfix]
-		private static void AwakePostfix(GameManager __instance)
+		private static void StartPostfix(GameManager __instance)
         {
 			PlayerPlugin.playerModels = new Dictionary<string, PlayerModelClass.PlayerModel>();
 			var pm1 = new PlayerModelClass.PlayerModel(__instance.PlayerPrefabs[0]);
@@ -31,6 +31,34 @@ namespace CreativePlayers.Patchers
 				PlayerPlugin.StartLoadingModels();
 			else
 				PlayerPlugin.StartLoadingLocalModels();
+
+			var health = __instance.playerGUI.transform.Find("Health");
+			health.gameObject.SetActive(true);
+			health.GetChild(0).gameObject.SetActive(true);
+			for (int i = 1; i < 4; i++)
+			{
+				Destroy(health.GetChild(i).gameObject);
+			}
+
+			for (int i = 3; i < 5; i++)
+			{
+				Destroy(health.GetChild(0).GetChild(i).gameObject);
+			}
+			var gm = health.GetChild(0).gameObject;
+			PlayerPlugin.healthImages = gm;
+			var text = gm.AddComponent<Text>();
+
+			text.alignment = TextAnchor.MiddleCenter;
+			text.font = Font.GetDefault();
+			text.enabled = false;
+
+			if (gm.transform.Find("Image"))
+            {
+				PlayerPlugin.healthSprite = gm.transform.Find("Image").GetComponent<Image>().sprite;
+			}
+
+			gm.transform.SetParent(null);
+			PlayerPlugin.healthParent = health;
 		}
 
 		[HarmonyPatch("Update")]
@@ -51,6 +79,7 @@ namespace CreativePlayers.Patchers
 				}
 			}
 		}
+
 		[HarmonyPatch("SpawnPlayers")]
 		[HarmonyPrefix]
 		private static bool SpawnPlayersPrefix(GameManager __instance, Vector3 __0)
@@ -78,7 +107,7 @@ namespace CreativePlayers.Patchers
 								if (InputDataManager.inst.players.All(x => !x.GetRTPlayer().PlayerAlive))
 								{
 									__instance.lastCheckpointState = -1;
-									__instance.ResetCheckpoints(false);
+									__instance.ResetCheckpoints();
 									__instance.hits.Clear();
 									__instance.deaths.Clear();
 									__instance.gameState = GameManager.State.Reversing;
@@ -113,14 +142,15 @@ namespace CreativePlayers.Patchers
 						{
 							if (InputDataManager.inst.players.All(x => !x.GetRTPlayer().PlayerAlive))
 							{
-								__instance.ResetCheckpoints();
+								//__instance.ResetCheckpoints();
 								__instance.gameState = GameManager.State.Reversing;
 							}
 						};
 					}
 				}
+				else
                 {
-					Debug.LogFormat("{0}Player {1} already exists!", PlayerPlugin.className, customPlayer.index + 1);
+					Debug.LogFormat("{0}Player {1} already exists!", PlayerPlugin.className, customPlayer.index);
                 }
 			}
 			return false;
@@ -183,6 +213,13 @@ namespace CreativePlayers.Patchers
 				}
 				num++;
 			}
+		}
+
+		[HarmonyPatch("QuitToArcade")]
+		[HarmonyPostfix]
+		private static void QuitToArcadePostfix()
+        {
+			PlayerPlugin.players.Clear();
 		}
 	}
 }

@@ -5,6 +5,8 @@ using System.Collections.Generic;
 using SimpleJSON;
 using UnityEngine;
 
+using RTFunctions.Functions;
+
 namespace CreativePlayers.Functions.Data
 {
     public class PlayerData : MonoBehaviour
@@ -14,11 +16,11 @@ namespace CreativePlayers.Functions.Data
             string path = _path;
             if (path == "")
             {
-                if (!RTFile.DirectoryExists(RTFile.GetApplicationDirectory() + "beatmaps/players"))
+                if (!RTFile.DirectoryExists(RTFile.ApplicationDirectory + "beatmaps/players"))
                 {
-                    Directory.CreateDirectory(RTFile.GetApplicationDirectory() + "beatmaps/players");
+                    Directory.CreateDirectory(RTFile.ApplicationDirectory + "beatmaps/players");
                 }
-                path = RTFile.GetApplicationDirectory() + "beatmaps/players/" + _name.ToLower().Replace(" ", "_") + ".lspl";
+                path = RTFile.ApplicationDirectory + "beatmaps/players/" + _name.ToLower().Replace(" ", "_") + ".lspl";
             }
 
             Debug.LogFormat("{0}Saving {1} to {2}", PlayerPlugin.className, _name, path);
@@ -54,7 +56,25 @@ namespace CreativePlayers.Functions.Data
             jn["base"]["id"] = (string)_model.values["Base ID"];
             jn["base"]["health"] = ((int)_model.values["Base Health"]).ToString();
 
+            jn["base"]["move_speed"] = ((float)_model.values["Base Move Speed"]).ToString();
+            jn["base"]["boost_speed"] = ((float)_model.values["Base Boost Speed"]).ToString();
+            jn["base"]["boost_cooldown"] = ((float)_model.values["Base Boost Cooldown"]).ToString();
+            jn["base"]["boost_min_time"] = ((float)_model.values["Base Min Boost Time"]).ToString();
+            jn["base"]["boost_max_time"] = ((float)_model.values["Base Max Boost Time"]).ToString();
+
+            jn["base"]["rotate_mode"] = ((int)_model.values["Base Rotate Mode"]).ToString();
+            jn["base"]["collision_acc"] = ((bool)_model.values["Base Collision Accurate"]).ToString();
+            jn["base"]["sprsneak"] = ((bool)_model.values["Base Sprint Sneak Active"]).ToString();
+
+            jn["stretch"]["active"] = ((bool)_model.values["Stretch Active"]).ToString();
+            jn["stretch"]["amount"] = ((float)_model.values["Stretch Amount"]).ToString();
+            jn["stretch"]["easing"] = ((int)_model.values["Stretch Easing"]).ToString();
+
+            jn["gui"]["health"]["active"] = ((bool)_model.values["GUI Health Active"]).ToString();
+            jn["gui"]["health"]["mode"] = ((int)_model.values["GUI Health Mode"]).ToString();
+
             #region Head
+
             Debug.LogFormat("{0}Saving Head Shape", PlayerPlugin.className);
             if (((Vector2Int)_model.values["Head Shape"]).x != 0)
                 jn["head"]["s"] = ((Vector2Int)_model.values["Head Shape"]).x.ToString();
@@ -68,6 +88,11 @@ namespace CreativePlayers.Functions.Data
             jn["head"]["sca"]["y"] = ((Vector2)_model.values["Head Scale"]).y.ToString();
             Debug.LogFormat("{0}Saving Head Rotation", PlayerPlugin.className);
             jn["head"]["rot"]["x"] = ((float)_model.values["Head Rotation"]).ToString();
+
+            jn["head"]["col"]["x"] = ((int)_model.values["Head Color"]).ToString();
+            jn["head"]["col"]["hex"] = (string)_model.values["Head Custom Color"];
+            jn["head"]["opa"]["hex"] = ((float)_model.values["Head Opacity"]).ToString();
+
             #endregion
 
             #region Head Trail
@@ -112,7 +137,12 @@ namespace CreativePlayers.Functions.Data
             jn["head"]["particles"]["trem"] = ((bool)_model.values["Head Particles Trail Emitting"]).ToString();
             #endregion
 
+            jn["face"]["position"]["x"] = ((Vector2)_model.values["Face Position"]).x.ToString();
+            jn["face"]["position"]["y"] = ((Vector2)_model.values["Face Position"]).y.ToString();
+            jn["face"]["con_active"] = ((bool)_model.values["Face Control Active"]).ToString();
+
             #region Boost
+
             Debug.LogFormat("{0}Saving Boost Active", PlayerPlugin.className);
             jn["boost"]["active"] = ((bool)_model.values["Boost Active"]).ToString();
             Debug.LogFormat("{0}Saving Boost Shape", PlayerPlugin.className);
@@ -128,6 +158,11 @@ namespace CreativePlayers.Functions.Data
             jn["boost"]["sca"]["y"] = ((Vector2)_model.values["Boost Scale"]).y.ToString();
             Debug.LogFormat("{0}Saving Boost Rotation", PlayerPlugin.className);
             jn["boost"]["rot"]["x"] = ((float)_model.values["Boost Rotation"]).ToString();
+
+            jn["boost"]["col"]["x"] = ((int)_model.values["Boost Color"]).ToString();
+            jn["boost"]["col"]["hex"] = (string)_model.values["Boost Custom Color"];
+            jn["boost"]["opa"]["hex"] = ((float)_model.values["Boost Opacity"]).ToString();
+
             #endregion
 
             #region Boost Trail
@@ -183,10 +218,82 @@ namespace CreativePlayers.Functions.Data
             jn["boost"]["particles"]["trem"] = ((bool)_model.values["Boost Particles Trail Emitting"]).ToString();
             #endregion
 
+            #region Pulse
+
+            Debug.LogFormat("{0}Saving Pulse Active", PlayerPlugin.className);
+            jn["pulse"]["active"] = ((bool)_model.values["Pulse Active"]).ToString();
+
+            Debug.LogFormat("{0}Saving Pulse Shape", PlayerPlugin.className);
+            if (((Vector2Int)_model.values["Pulse Shape"]).x != 0)
+                jn["pulse"]["s"] = ((Vector2Int)_model.values["Pulse Shape"]).x.ToString();
+            if (((Vector2Int)_model.values["Pulse Shape"]).y != 0)
+                jn["pulse"]["so"] = ((Vector2Int)_model.values["Pulse Shape"]).y.ToString();
+
+            Debug.LogFormat("{0}Saving Pulse Rotate to Head", PlayerPlugin.className);
+            jn["pulse"]["rothead"] = ((bool)_model.values["Pulse Rotate to Head"]).ToString();
+
+            Debug.LogFormat("{0}Saving Pulse Color", PlayerPlugin.className);
+            jn["pulse"]["col"]["start"] = ((int)_model.values["Pulse Start Color"]).ToString();
+            jn["pulse"]["col"]["end"] = ((int)_model.values["Pulse End Color"]).ToString();
+            jn["pulse"]["col"]["easing"] = ((int)_model.values["Pulse Easing Color"]).ToString();
+
+            Debug.LogFormat("{0}Saving Pulse Opacity", PlayerPlugin.className);
+            jn["pulse"]["opa"]["start"] = ((float)_model.values["Pulse Start Opacity"]).ToString();
+            jn["pulse"]["opa"]["end"] = ((float)_model.values["Pulse End Opacity"]).ToString();
+            jn["pulse"]["opa"]["easing"] = ((int)_model.values["Pulse Easing Opacity"]).ToString();
+
+            Debug.LogFormat("{0}Saving Pulse Depth", PlayerPlugin.className);
+            jn["pulse"]["d"] = ((float)_model.values["Pulse Depth"]).ToString();
+
+            Debug.LogFormat("{0}Saving Pulse Position", PlayerPlugin.className);
+            jn["pulse"]["pos"]["start"]["x"] = ((Vector2)_model.values["Pulse Start Position"]).x.ToString();
+            jn["pulse"]["pos"]["start"]["y"] = ((Vector2)_model.values["Pulse Start Position"]).y.ToString();
+            jn["pulse"]["pos"]["end"]["x"] = ((Vector2)_model.values["Pulse End Position"]).x.ToString();
+            jn["pulse"]["pos"]["end"]["y"] = ((Vector2)_model.values["Pulse End Position"]).y.ToString();
+            jn["pulse"]["pos"]["easing"] = ((int)_model.values["Pulse Easing Position"]).ToString();
+
+            Debug.LogFormat("{0}Saving Pulse Scale", PlayerPlugin.className);
+            jn["pulse"]["sca"]["start"]["x"] = ((Vector2)_model.values["Pulse Start Scale"]).x.ToString();
+            jn["pulse"]["sca"]["start"]["y"] = ((Vector2)_model.values["Pulse Start Scale"]).y.ToString();
+            jn["pulse"]["sca"]["end"]["x"] = ((Vector2)_model.values["Pulse End Scale"]).x.ToString();
+            jn["pulse"]["sca"]["end"]["y"] = ((Vector2)_model.values["Pulse End Scale"]).y.ToString();
+            jn["pulse"]["sca"]["easing"] = ((int)_model.values["Pulse Easing Scale"]).ToString();
+
+            Debug.LogFormat("{0}Saving Pulse Rotation", PlayerPlugin.className);
+            jn["pulse"]["rot"]["start"] = ((float)_model.values["Pulse Start Rotation"]).ToString();
+            jn["pulse"]["rot"]["end"] = ((float)_model.values["Pulse End Rotation"]).ToString();
+            jn["pulse"]["rot"]["easing"] = ((int)_model.values["Pulse Easing Rotation"]).ToString();
+
+            jn["pulse"]["lt"] = ((float)_model.values["Pulse Duration"]).ToString();
+
+            #endregion
+
             #region Tail
+
             Debug.LogFormat("{0}Saving Tail Base", PlayerPlugin.className);
             jn["tail_base"]["distance"] = ((float)_model.values["Tail Base Distance"]).ToString();
             jn["tail_base"]["mode"] = ((int)_model.values["Tail Base Mode"]).ToString();
+            jn["tail_base"]["grows"] = ((bool)_model.values["Tail Base Grows"]).ToString();
+
+            Debug.LogFormat("{0}Saving Tail Boost Active", PlayerPlugin.className);
+            jn["tail_boost"]["active"] = ((bool)_model.values["Tail Boost Active"]).ToString();
+
+            Debug.LogFormat("{0}Saving Tail Boost Shape", PlayerPlugin.className);
+            if (((Vector2Int)_model.values["Tail Boost Shape"]).x != 0)
+                jn["tail_boost"]["s"] = ((Vector2Int)_model.values["Tail Boost Shape"]).x.ToString();
+            if (((Vector2Int)_model.values["Tail Boost Shape"]).y != 0)
+                jn["tail_boost"]["so"] = ((Vector2Int)_model.values["Tail Boost Shape"]).y.ToString();
+            Debug.LogFormat("{0}Saving Tail Boost Position", PlayerPlugin.className);
+            jn["tail_boost"]["pos"]["x"] = ((Vector2)_model.values["Tail Boost Position"]).x.ToString();
+            jn["tail_boost"]["pos"]["y"] = ((Vector2)_model.values["Tail Boost Position"]).y.ToString();
+            Debug.LogFormat("{0}Saving Tail Boost Scale", PlayerPlugin.className);
+            jn["tail_boost"]["sca"]["x"] = ((Vector2)_model.values["Tail Boost Scale"]).x.ToString();
+            jn["tail_boost"]["sca"]["y"] = ((Vector2)_model.values["Tail Boost Scale"]).y.ToString();
+            jn["tail_boost"]["rot"]["x"] = ((float)_model.values["Tail Boost Rotation"]).ToString();
+
+            jn["tail_boost"]["col"]["x"] = ((int)_model.values["Tail Boost Color"]).ToString();
+            jn["tail_boost"]["col"]["hex"] = (string)_model.values["Tail Boost Custom Color"];
+            jn["tail_boost"]["opa"]["hex"] = ((float)_model.values["Tail Boost Opacity"]).ToString();
 
             for (int i = 1; i < 4; i++)
             {
@@ -205,6 +312,9 @@ namespace CreativePlayers.Functions.Data
                 jn["tail"][i - 1]["sca"]["y"] = ((Vector2)_model.values[string.Format("Tail {0} Scale", i)]).y.ToString();
                 Debug.LogFormat("{0}Saving Tail {1} Rotation", PlayerPlugin.className, i);
                 jn["tail"][i - 1]["rot"]["x"] = ((float)_model.values[string.Format("Tail {0} Rotation", i)]).ToString();
+                jn["tail"][i - 1]["col"]["x"] = ((int)_model.values[string.Format("Tail {0} Color", i)]).ToString();
+                jn["tail"][i - 1]["col"]["hex"] = (string)_model.values[string.Format("Tail {0} Custom Color", i)];
+                jn["tail"][i - 1]["opa"]["x"] = ((float)_model.values[string.Format("Tail {0} Opacity", i)]).ToString();
 
                 Debug.LogFormat("{0}Saving Tail {1} Trail Emitting", PlayerPlugin.className, i);
                 jn["tail"][i - 1]["trail"]["em"] = ((bool)_model.values[string.Format("Tail {0} Trail Emitting", i)]).ToString();
@@ -216,8 +326,10 @@ namespace CreativePlayers.Functions.Data
                 jn["tail"][i - 1]["trail"]["w"]["end"] = ((float)_model.values[string.Format("Tail {0} Trail End Width", i)]).ToString();
                 Debug.LogFormat("{0}Saving Tail {1} Trail Start Color", PlayerPlugin.className, i);
                 jn["tail"][i - 1]["trail"]["c"]["start"] = ((int)_model.values[string.Format("Tail {0} Trail Start Color", i)]).ToString();
+                jn["tail"][i - 1]["trail"]["c"]["start_hex"] = (string)_model.values[string.Format("Tail {0} Trail Start Custom Color", i)];
                 Debug.LogFormat("{0}Saving Tail {1} Trail End Color", PlayerPlugin.className, i);
                 jn["tail"][i - 1]["trail"]["c"]["end"] = ((int)_model.values[string.Format("Tail {0} Trail End Color", i)]).ToString();
+                jn["tail"][i - 1]["trail"]["c"]["end_hex"] = (string)_model.values[string.Format("Tail {0} Trail End Custom Color", i)];
                 Debug.LogFormat("{0}Saving Tail {1} Trail Start Opacity", PlayerPlugin.className, i);
                 jn["tail"][i - 1]["trail"]["o"]["start"] = ((float)_model.values[string.Format("Tail {0} Trail Start Opacity", i)]).ToString();
                 Debug.LogFormat("{0}Saving Tail {1} Trail End Opacity", PlayerPlugin.className, i);
@@ -229,6 +341,9 @@ namespace CreativePlayers.Functions.Data
                 if (((Vector2Int)_model.values[string.Format("Tail {0} Particles Shape", i)]).y != 0)
                     jn["tail"][i - 1]["particles"]["so"] = ((Vector2Int)_model.values[string.Format("Tail {0} Particles Shape", i)]).y.ToString();
                 jn["tail"][i - 1]["particles"]["col"] = ((int)_model.values[string.Format("Tail {0} Particles Color", i)]).ToString();
+                if (!string.IsNullOrEmpty(jn["tail"][i - 1]["particles"]["col_hex"]))
+                    jn["tail"][i - 1]["particles"]["col_hex"] = (string)_model.values[string.Format("Tail {0} Particles Custom Color", i)];
+
                 jn["tail"][i - 1]["particles"]["opa"]["start"] = ((float)_model.values[string.Format("Tail {0} Particles Start Opacity", i)]).ToString();
                 jn["tail"][i - 1]["particles"]["opa"]["end"] = ((float)_model.values[string.Format("Tail {0} Particles End Opacity", i)]).ToString();
                 jn["tail"][i - 1]["particles"]["sca"]["start"] = ((float)_model.values[string.Format("Tail {0} Particles Start Scale", i)]).ToString();
@@ -244,6 +359,7 @@ namespace CreativePlayers.Functions.Data
             #endregion
 
             #region Custom Objects
+
             Dictionary<string, object> dictionary = (Dictionary<string, object>)_model.values["Custom Objects"];
             if (dictionary != null && dictionary.Count > 0)
                 for (int i = 0; i < dictionary.Count; i++)
@@ -251,12 +367,18 @@ namespace CreativePlayers.Functions.Data
                     var customObj = (Dictionary<string, object>)dictionary.ElementAt(i).Value;
 
                     jn["custom_objects"][i]["id"] = (string)customObj["ID"];
+                    jn["custom_objects"][i]["n"] = (string)customObj["Name"];
 
                     if (((Vector2Int)customObj["Shape"]).x != 0)
                         jn["custom_objects"][i]["s"] = ((Vector2Int)customObj["Shape"]).x.ToString();
                     if (((Vector2Int)customObj["Shape"]).y != 0)
                         jn["custom_objects"][i]["so"] = ((Vector2Int)customObj["Shape"]).y.ToString();
                     jn["custom_objects"][i]["p"] = ((int)customObj["Parent"]).ToString();
+                    jn["custom_objects"][i]["ppo"] = ((float)customObj["Parent Position Offset"]).ToString();
+                    jn["custom_objects"][i]["pso"] = ((float)customObj["Parent Scale Offset"]).ToString();
+                    jn["custom_objects"][i]["pro"] = ((float)customObj["Parent Rotation Offset"]).ToString();
+                    jn["custom_objects"][i]["psa"] = ((bool)customObj["Parent Scale Active"]).ToString();
+                    jn["custom_objects"][i]["pra"] = ((bool)customObj["Parent Rotation Active"]).ToString();
                     jn["custom_objects"][i]["d"] = ((float)customObj["Depth"]).ToString();
                     jn["custom_objects"][i]["pos"]["x"] = ((Vector2)customObj["Position"]).x.ToString();
                     jn["custom_objects"][i]["pos"]["y"] = ((Vector2)customObj["Position"]).y.ToString();
@@ -264,8 +386,22 @@ namespace CreativePlayers.Functions.Data
                     jn["custom_objects"][i]["sca"]["y"] = ((Vector2)customObj["Scale"]).y.ToString();
                     jn["custom_objects"][i]["rot"]["x"] = ((float)customObj["Rotation"]).ToString();
                     jn["custom_objects"][i]["col"]["x"] = ((int)customObj["Color"]).ToString();
+                    if (((int)customObj["Color"]) == 24)
+                    {
+                        jn["custom_objects"][i]["col"]["hex"] = (string)customObj["Custom Color"];
+                    }
+
                     if (((float)customObj["Opacity"]) != 1f)
                         jn["custom_objects"][i]["opa"]["x"] = ((float)customObj["Opacity"]).ToString();
+
+                    if ((int)customObj["Visibility"] != 0)
+                        jn["custom_objects"][i]["v"] = ((int)customObj["Visibility"]).ToString();
+
+                    if ((int)customObj["Visibility"] > 3)
+                        jn["custom_objects"][i]["vhp"] = ((float)customObj["Visibility Value"]).ToString();
+
+                    if ((bool)customObj["Visibility Not"] != false)
+                        jn["custom_objects"][i]["vn"] = ((bool)customObj["Visibility Not"]).ToString();
                 }
             #endregion
 
@@ -278,8 +414,10 @@ namespace CreativePlayers.Functions.Data
             string path = _path;
             if (path == "")
             {
-                path = RTFile.GetApplicationDirectory() + "beatmaps/players/" + _name.ToLower().Replace(" ", "") + ".lspl";
+                path = RTFile.ApplicationDirectory + "beatmaps/players/" + _name.ToLower().Replace(" ", "") + ".lspl";
             }
+
+            Debug.LogFormat("{0}Loading player model file from {1}", PlayerPlugin.className, path);
 
             if (RTFile.FileExists(path))
             {
@@ -294,6 +432,8 @@ namespace CreativePlayers.Functions.Data
         public static PlayerModelClass.PlayerModel LoadPlayer(JSONNode jn)
         {
             var model = new PlayerModelClass.PlayerModel();
+
+            #region Base
 
             model.values["Base Name"] = (string)jn["base"]["name"];
             if (!string.IsNullOrEmpty(jn["base"]["id"]))
@@ -313,7 +453,79 @@ namespace CreativePlayers.Functions.Data
                 model.values["Base Health"] = 3;
             }
 
+            if (!string.IsNullOrEmpty(jn["base"]["move_speed"]))
+            {
+                model.values["Base Move Speed"] = float.Parse(jn["base"]["move_speed"]);
+            }
+            if (!string.IsNullOrEmpty(jn["base"]["boost_speed"]))
+            {
+                model.values["Base Boost Speed"] = float.Parse(jn["base"]["boost_speed"]);
+            }
+            if (!string.IsNullOrEmpty(jn["base"]["boost_cooldown"]))
+            {
+                model.values["Base Boost Cooldown"] = float.Parse(jn["base"]["boost_cooldown"]);
+            }
+            if (!string.IsNullOrEmpty(jn["base"]["boost_min_time"]))
+            {
+                model.values["Base Min Boost Time"] = float.Parse(jn["base"]["boost_min_time"]);
+            }
+            if (!string.IsNullOrEmpty(jn["base"]["boost_max_time"]))
+            {
+                model.values["Base Max Boost Time"] = float.Parse(jn["base"]["boost_max_time"]);
+            }
+
+            if (!string.IsNullOrEmpty(jn["base"]["rotate_mode"]))
+            {
+                model.values["Base Rotate Mode"] = int.Parse(jn["base"]["rotate_mode"]);
+            }
+
+            if (!string.IsNullOrEmpty(jn["base"]["collision_acc"]))
+            {
+                model.values["Base Collision Accurate"] = bool.Parse(jn["base"]["collision_acc"]);
+            }
+
+            if (!string.IsNullOrEmpty(jn["base"]["sprsneak"]))
+            {
+                model.values["Base Sprint Sneak Active"] = bool.Parse(jn["base"]["sprsneak"]);
+            }
+
+            #endregion
+
+            #region Stretch
+
+            if (!string.IsNullOrEmpty(jn["stretch"]["active"]))
+            {
+                model.values["Stretch Active"] = bool.Parse(jn["stretch"]["active"]);
+            }
+
+            if (!string.IsNullOrEmpty(jn["stretch"]["amount"]))
+            {
+                model.values["Stretch Amount"] = float.Parse(jn["stretch"]["amount"]);
+            }
+
+            if (!string.IsNullOrEmpty(jn["stretch"]["easing"]))
+            {
+                model.values["Stretch Easing"] = int.Parse(jn["stretch"]["easing"]);
+            }
+
+            #endregion
+
+            #region GUI
+
+            if (!string.IsNullOrEmpty(jn["gui"]["health"]["active"]))
+            {
+                model.values["GUI Health Active"] = bool.Parse(jn["gui"]["health"]["active"]);
+            }
+
+            if (!string.IsNullOrEmpty(jn["gui"]["health"]["mode"]))
+            {
+                model.values["GUI Health Mode"] = int.Parse(jn["gui"]["health"]["mode"]);
+            }
+
+            #endregion
+
             #region Head
+
             Debug.LogFormat("{0}Loading Head Shape", PlayerPlugin.className);
             int headS = 0;
             int headSO = 0;
@@ -325,6 +537,7 @@ namespace CreativePlayers.Functions.Data
             {
                 headSO = int.Parse(jn["head"]["so"]);
             }
+
             model.values["Head Shape"] = new Vector2Int(headS, headSO);
             Debug.LogFormat("{0}Loading Head Position", PlayerPlugin.className);
             model.values["Head Position"] = new Vector2(float.Parse(jn["head"]["pos"]["x"]), float.Parse(jn["head"]["pos"]["y"]));
@@ -332,6 +545,20 @@ namespace CreativePlayers.Functions.Data
             model.values["Head Scale"] = new Vector2(float.Parse(jn["head"]["sca"]["x"]), float.Parse(jn["head"]["sca"]["y"]));
             Debug.LogFormat("{0}Loading Head Rotation", PlayerPlugin.className);
             model.values["Head Rotation"] = float.Parse(jn["head"]["rot"]["x"]);
+
+            if (jn["head"]["col"] != null && !string.IsNullOrEmpty(jn["head"]["col"]["x"]))
+            {
+                model.values["Head Color"] = int.Parse(jn["head"]["col"]["x"]);
+            }
+            if (jn["head"]["col"] != null && !string.IsNullOrEmpty(jn["head"]["col"]["hex"]))
+            {
+                model.values["Head Custom Color"] = (string)jn["head"]["col"]["hex"];
+            }
+            if (jn["head"]["opa"] != null && !string.IsNullOrEmpty(jn["head"]["opa"]["x"]))
+            {
+                model.values["Head Opacity"] = float.Parse(jn["head"]["opa"]["x"]);
+            }
+
             #endregion
 
             #region Head Trail
@@ -408,7 +635,21 @@ namespace CreativePlayers.Functions.Data
             model.values["Head Particles Trail Emitting"] = bool.Parse(jn["head"]["particles"]["trem"]);
             #endregion
 
+            if (jn["face"] != null)
+            {
+                if (!string.IsNullOrEmpty(jn["face"]["position"]["x"]) && !string.IsNullOrEmpty(jn["face"]["position"]["y"]))
+                {
+                    model.values["Face Position"] = new Vector2(float.Parse(jn["face"]["position"]["x"]), float.Parse(jn["face"]["position"]["y"]));
+                }
+
+                if (!string.IsNullOrEmpty(jn["face"]["con_active"]))
+                {
+                    model.values["Face Control Active"] = bool.Parse(jn["face"]["con_active"]);
+                }
+            }
+
             #region Boost
+
             Debug.LogFormat("{0}Loading Boost Active", PlayerPlugin.className);
             if (!string.IsNullOrEmpty(jn["boost"]["active"]))
             {
@@ -432,6 +673,20 @@ namespace CreativePlayers.Functions.Data
             model.values["Boost Scale"] = new Vector2(float.Parse(jn["boost"]["sca"]["x"]), float.Parse(jn["boost"]["sca"]["y"]));
             Debug.LogFormat("{0}Loading Boost Rotation", PlayerPlugin.className);
             model.values["Boost Rotation"] = float.Parse(jn["boost"]["rot"]["x"]);
+
+            if (jn["boost"]["col"] != null && !string.IsNullOrEmpty(jn["boost"]["col"]["x"]))
+            {
+                model.values["Boost Color"] = int.Parse(jn["boost"]["col"]["x"]);
+            }
+            if (jn["boost"]["col"] != null && !string.IsNullOrEmpty(jn["boost"]["col"]["hex"]))
+            {
+                model.values["Boost Custom Color"] = (string)jn["boost"]["col"]["hex"];
+            }
+            if (jn["boost"]["opa"] != null && !string.IsNullOrEmpty(jn["boost"]["opa"]["x"]))
+            {
+                model.values["Boost Opacity"] = float.Parse(jn["boost"]["opa"]["x"]);
+            }
+
             #endregion
 
             #region Boost Trail
@@ -494,17 +749,146 @@ namespace CreativePlayers.Functions.Data
             model.values["Boost Particles Trail Emitting"] = bool.Parse(jn["boost"]["particles"]["trem"]);
             #endregion
 
+            #region Pulse
+
+            Debug.LogFormat("{0}Loading Pulse Active", PlayerPlugin.className);
+            if (!string.IsNullOrEmpty(jn["pulse"]["active"]))
+                model.values["Pulse Active"] = bool.Parse(jn["pulse"]["active"]);
+
+            Debug.LogFormat("{0}Loading Pulse Shape", PlayerPlugin.className);
+            int pulseS = 0;
+            int pulseSO = 0;
+            if (!string.IsNullOrEmpty(jn["pulse"]["s"]))
+            {
+                pulseS = int.Parse(jn["pulse"]["s"]);
+            }
+            if (!string.IsNullOrEmpty(jn["pulse"]["so"]))
+            {
+                pulseSO = int.Parse(jn["pulse"]["so"]);
+            }
+
+            model.values["Pulse Shape"] = new Vector2Int(pulseS, pulseSO);
+
+            Debug.LogFormat("{0}Loading Pulse Rotate to Head", PlayerPlugin.className);
+            if (!string.IsNullOrEmpty(jn["pulse"]["rothead"]))
+                model.values["Pulse Rotate to Head"] = bool.Parse(jn["pulse"]["rothead"]);
+
+            Debug.LogFormat("{0}Loading Pulse Color", PlayerPlugin.className);
+            if (!string.IsNullOrEmpty(jn["pulse"]["col"]["start"]))
+                model.values["Pulse Start Color"] = int.Parse(jn["pulse"]["col"]["start"]);
+            if (!string.IsNullOrEmpty(jn["pulse"]["col"]["end"]))
+                model.values["Pulse End Color"] = int.Parse(jn["pulse"]["col"]["end"]);
+            if (!string.IsNullOrEmpty(jn["pulse"]["col"]["easing"]))
+                model.values["Pulse Easing Color"] = int.Parse(jn["pulse"]["col"]["easing"]);
+
+            Debug.LogFormat("{0}Loading Pulse Opacity", PlayerPlugin.className);
+            if (!string.IsNullOrEmpty(jn["pulse"]["opa"]["start"]))
+                model.values["Pulse Start Opacity"] = float.Parse(jn["pulse"]["opa"]["start"]);
+            if (!string.IsNullOrEmpty(jn["pulse"]["opa"]["end"]))
+                model.values["Pulse End Opacity"] = float.Parse(jn["pulse"]["opa"]["end"]);
+            if (!string.IsNullOrEmpty(jn["pulse"]["opa"]["easing"]))
+                model.values["Pulse Easing Opacity"] = int.Parse(jn["pulse"]["opa"]["easing"]);
+
+            Debug.LogFormat("{0}Loading Pulse Depth", PlayerPlugin.className);
+            if (!string.IsNullOrEmpty(jn["pulse"]["d"]))
+                model.values["Pulse Depth"] = float.Parse(jn["pulse"]["d"]);
+
+            Debug.LogFormat("{0}Loading Pulse Position", PlayerPlugin.className);
+            if (!string.IsNullOrEmpty(jn["pulse"]["pos"]["start"]["x"]) && !string.IsNullOrEmpty(jn["pulse"]["pos"]["start"]["y"]))
+                model.values["Pulse Start Position"] = new Vector2(float.Parse(jn["pulse"]["pos"]["start"]["x"]), float.Parse(jn["pulse"]["pos"]["start"]["y"]));
+            if (!string.IsNullOrEmpty(jn["pulse"]["pos"]["end"]["x"]) && !string.IsNullOrEmpty(jn["pulse"]["pos"]["end"]["y"]))
+                model.values["Pulse End Position"] = new Vector2(float.Parse(jn["pulse"]["pos"]["end"]["x"]), float.Parse(jn["pulse"]["pos"]["end"]["y"]));
+            if (!string.IsNullOrEmpty(jn["pulse"]["pos"]["easing"]))
+                model.values["Pulse Easing Position"] = int.Parse(jn["pulse"]["pos"]["easing"]);
+
+            Debug.LogFormat("{0}Loading Pulse Scale", PlayerPlugin.className);
+            if (!string.IsNullOrEmpty(jn["pulse"]["sca"]["start"]["x"]) && !string.IsNullOrEmpty(jn["pulse"]["sca"]["start"]["y"]))
+                model.values["Pulse Start Scale"] = new Vector2(float.Parse(jn["pulse"]["sca"]["start"]["x"]), float.Parse(jn["pulse"]["sca"]["start"]["y"]));
+            if (!string.IsNullOrEmpty(jn["pulse"]["sca"]["end"]["x"]) && !string.IsNullOrEmpty(jn["pulse"]["sca"]["end"]["y"]))
+                model.values["Pulse End Scale"] = new Vector2(float.Parse(jn["pulse"]["sca"]["end"]["x"]), float.Parse(jn["pulse"]["sca"]["end"]["y"]));
+            if (!string.IsNullOrEmpty(jn["pulse"]["sca"]["easing"]))
+                model.values["Pulse Easing Scale"] = int.Parse(jn["pulse"]["sca"]["easing"]);
+
+            Debug.LogFormat("{0}Loading Pulse Rotation", PlayerPlugin.className);
+            if (!string.IsNullOrEmpty(jn["pulse"]["rot"]["start"]))
+                model.values["Pulse Start Rotation"] = float.Parse(jn["pulse"]["rot"]["start"]);
+            if (!string.IsNullOrEmpty(jn["pulse"]["rot"]["end"]))
+                model.values["Pulse End Rotation"] = float.Parse(jn["pulse"]["rot"]["end"]);
+            if (!string.IsNullOrEmpty(jn["pulse"]["rot"]["easing"]))
+                model.values["Pulse Easing Rotation"] = int.Parse(jn["pulse"]["rot"]["easing"]);
+
+            Debug.LogFormat("{0}Loading Pulse Duration", PlayerPlugin.className);
+            if (!string.IsNullOrEmpty(jn["pulse"]["lt"]))
+                model.values["Pulse Duration"] = float.Parse(jn["pulse"]["lt"]);
+
+            #endregion
+
             #region Tail
             Debug.LogFormat("{0}Loading Tail Base Distance", PlayerPlugin.className);
             model.values["Tail Base Distance"] = float.Parse(jn["tail_base"]["distance"]);
             Debug.LogFormat("{0}Loading Tail Base Mode", PlayerPlugin.className);
             model.values["Tail Base Mode"] = int.Parse(jn["tail_base"]["mode"]);
 
+            if (!string.IsNullOrEmpty(jn["tail_base"]["grows"]))
+            {
+                Debug.LogFormat("{0}Loading Tail Base Grows", PlayerPlugin.className);
+                model.values["Tail Base Grows"] = bool.Parse(jn["tail_base"]["grows"]);
+            }
+
+            if (!string.IsNullOrEmpty(jn["tail_boost"]["active"]))
+            {
+                Debug.LogFormat("{0}Loading Tail Base Mode", PlayerPlugin.className);
+                model.values["Tail Boost Active"] = bool.Parse(jn["tail_boost"]["active"]);
+            }
+
+            int tailBS = 0;
+            int tailBSO = 0;
+            if (!string.IsNullOrEmpty(jn["tail_boost"]["s"]))
+            {
+                tailBS = int.Parse(jn["tail_boost"]["s"]);
+            }
+            if (!string.IsNullOrEmpty(jn["tail_boost"]["so"]))
+            {
+                tailBSO = int.Parse(jn["tail_boost"]["so"]);
+            }
+            model.values["Tail Boost Shape"] = new Vector2Int(tailBS, tailBSO);
+
+            if (!string.IsNullOrEmpty(jn["tail_boost"]["pos"]["x"]) && !string.IsNullOrEmpty(jn["tail_boost"]["pos"]["y"]))
+            {
+                Debug.LogFormat("{0}Loading Tail Boost Position", PlayerPlugin.className);
+                model.values["Tail Boost Position"] = new Vector2(float.Parse(jn["tail_boost"]["pos"]["x"]), float.Parse(jn["tail_boost"]["pos"]["y"]));
+            }
+
+            if (!string.IsNullOrEmpty(jn["tail_boost"]["sca"]["x"]) && !string.IsNullOrEmpty(jn["tail_boost"]["sca"]["y"]))
+            {
+                Debug.LogFormat("{0}Loading Tail Boost Scale", PlayerPlugin.className);
+                model.values["Tail Boost Scale"] = new Vector2(float.Parse(jn["tail_boost"]["sca"]["x"]), float.Parse(jn["tail_boost"]["sca"]["y"]));
+            }
+
+            if (!string.IsNullOrEmpty(jn["tail_boost"]["rot"]["x"]))
+            {
+                Debug.LogFormat("{0}Loading Tail Base Mode", PlayerPlugin.className);
+                model.values["Tail Boost Rotation"] = float.Parse(jn["tail_boost"]["rot"]["x"]);
+            }
+
+            if (jn["tail_boost"]["col"] != null && !string.IsNullOrEmpty(jn["tail_boost"]["col"]["x"]))
+            {
+                model.values["Tail Boost Color"] = int.Parse(jn["tail_boost"]["col"]["x"]);
+            }
+            if (jn["tail_boost"]["col"] != null && !string.IsNullOrEmpty(jn["tail_boost"]["col"]["hex"]))
+            {
+                model.values["Tail Boost Custom Color"] = (string)jn["tail_boost"]["col"]["hex"];
+            }
+            if (jn["tail_boost"]["opa"] != null && !string.IsNullOrEmpty(jn["tail_boost"]["opa"]["x"]))
+            {
+                model.values["Tail Boost Opacity"] = float.Parse(jn["tail_boost"]["opa"]["x"]);
+            }
+
             for (int i = 1; i < jn["tail"].Count + 1; i++)
             {
-                Debug.LogFormat("{0}Loading Tail {1} Active", PlayerPlugin.className, i);
                 if (!string.IsNullOrEmpty(jn["tail"][i - 1]["active"]))
                 {
+                    Debug.LogFormat("{0}Loading Tail {1} Active", PlayerPlugin.className, i);
                     model.values[string.Format("Tail {0} Active", i)] = bool.Parse(jn["tail"][i - 1]["active"]);
                 }
                 Debug.LogFormat("{0}Loading Tail {1} Shape", PlayerPlugin.className, i);
@@ -526,6 +910,19 @@ namespace CreativePlayers.Functions.Data
                 Debug.LogFormat("{0}Loading Tail {1} Rotation", PlayerPlugin.className, i);
                 model.values[string.Format("Tail {0} Rotation", i)] = float.Parse(jn["tail"][i - 1]["rot"]["x"]);
 
+                if (jn["tail"][i - 1]["col"] != null && !string.IsNullOrEmpty(jn["tail"][i - 1]["col"]["x"]))
+                {
+                    model.values[string.Format("Tail {0} Color", i)] = int.Parse(jn["tail"][i - 1]["col"]["x"]);
+                }
+                if (jn["tail"][i - 1]["col"] != null && !string.IsNullOrEmpty(jn["tail"][i - 1]["col"]["hex"]))
+                {
+                    model.values[string.Format("Tail {0} Custom Color", i)] = (string)jn["tail"][i - 1]["col"]["hex"];
+                }
+                if (jn["tail"][i - 1]["opa"] != null && !string.IsNullOrEmpty(jn["tail"][i - 1]["opa"]["x"]))
+                {
+                    model.values[string.Format("Tail {0} Opacity", i)] = float.Parse(jn["tail"][i - 1]["opa"]["x"]);
+                }
+
                 Debug.LogFormat("{0}Loading Tail {1} Trail Emitting", PlayerPlugin.className, i);
                 model.values[string.Format("Tail {0} Trail Emitting", i)] = bool.Parse(jn["tail"][i - 1]["trail"]["em"]);
                 Debug.LogFormat("{0}Loading Tail {1} Trail Time", PlayerPlugin.className, i);
@@ -534,8 +931,20 @@ namespace CreativePlayers.Functions.Data
                 model.values[string.Format("Tail {0} Trail Start Width", i)] = float.Parse(jn["tail"][i - 1]["trail"]["w"]["start"]);
                 Debug.LogFormat("{0}Loading Tail {1} Trail End Width", PlayerPlugin.className, i);
                 model.values[string.Format("Tail {0} Trail End Width", i)] = float.Parse(jn["tail"][i - 1]["trail"]["w"]["end"]);
+
+                if (!string.IsNullOrEmpty(jn["tail"][i - 1]["trail"]["c"]["start_hex"]))
+                {
+                    model.values[string.Format("Tail {0} Trail Start Custom Color", i)] = (string)jn["tail"][i - 1]["trail"]["c"]["start_hex"];
+                }
+
                 Debug.LogFormat("{0}Loading Tail {1} Trail Start Color", PlayerPlugin.className, i);
                 model.values[string.Format("Tail {0} Trail Start Color", i)] = int.Parse(jn["tail"][i - 1]["trail"]["c"]["start"]);
+
+                if (!string.IsNullOrEmpty(jn["tail"][i - 1]["trail"]["c"]["end_hex"]))
+                {
+                    model.values[string.Format("Tail {0} Trail End Custom Color", i)] = (string)jn["tail"][i - 1]["trail"]["c"]["end_hex"];
+                }
+
                 Debug.LogFormat("{0}Loading Tail {1} Trail End Color", PlayerPlugin.className, i);
                 model.values[string.Format("Tail {0} Trail End Color", i)] = int.Parse(jn["tail"][i - 1]["trail"]["c"]["end"]);
                 Debug.LogFormat("{0}Loading Tail {1} Trail Start Opacity", PlayerPlugin.className, i);
@@ -561,6 +970,9 @@ namespace CreativePlayers.Functions.Data
                 model.values[string.Format("Tail {0} Particles Shape", i)] = new Vector2Int(tailPS, tailPSO);
                 Debug.LogFormat("{0}Loading Tail {1} Particles Color", PlayerPlugin.className, i);
                 model.values[string.Format("Tail {0} Particles Color", i)] = int.Parse(jn["tail"][i - 1]["particles"]["col"]);
+                if (!string.IsNullOrEmpty(jn["tail"][i - 1]["particles"]["col_hex"]))
+                    model.values[string.Format("Tail {0} Particles Custom Color", i)] = (string)jn["tail"][i - 1]["particles"]["col_hex"];
+
                 Debug.LogFormat("{0}Loading Tail {1} Particles Start Opacity", PlayerPlugin.className, i);
                 model.values[string.Format("Tail {0} Particles Start Opacity", i)] = float.Parse(jn["tail"][i - 1]["particles"]["opa"]["start"]);
                 Debug.LogFormat("{0}Loading Tail {1} Particles End Opacity", PlayerPlugin.className, i);
@@ -594,6 +1006,12 @@ namespace CreativePlayers.Functions.Data
 
                     ((Dictionary<string, object>)dictionary[id]).Add("ID", id);
 
+                    string n = "Object Name";
+                    if (!string.IsNullOrEmpty(jn["custom_objects"][i]["n"]))
+                        n = jn["custom_objects"][i]["n"];
+
+                    ((Dictionary<string, object>)dictionary[id]).Add("Name", n);
+
                     int tailS = 0;
                     int tailSO = 0;
                     if (!string.IsNullOrEmpty(jn["custom_objects"][i]["s"]))
@@ -607,11 +1025,23 @@ namespace CreativePlayers.Functions.Data
 
                     ((Dictionary<string, object>)dictionary[id]).Add("Shape", new Vector2Int(tailS, tailSO));
                     ((Dictionary<string, object>)dictionary[id]).Add("Parent", int.Parse(jn["custom_objects"][i]["p"]));
+                    ((Dictionary<string, object>)dictionary[id]).Add("Parent Position Offset", float.Parse(jn["custom_objects"][i]["ppo"]));
+                    ((Dictionary<string, object>)dictionary[id]).Add("Parent Scale Offset", float.Parse(jn["custom_objects"][i]["pso"]));
+                    ((Dictionary<string, object>)dictionary[id]).Add("Parent Rotation Offset", float.Parse(jn["custom_objects"][i]["pro"]));
+                    ((Dictionary<string, object>)dictionary[id]).Add("Parent Scale Active", bool.Parse(jn["custom_objects"][i]["psa"]));
+                    ((Dictionary<string, object>)dictionary[id]).Add("Parent Rotation Active", bool.Parse(jn["custom_objects"][i]["pra"]));
                     ((Dictionary<string, object>)dictionary[id]).Add("Depth", float.Parse(jn["custom_objects"][i]["d"]));
                     ((Dictionary<string, object>)dictionary[id]).Add("Position", new Vector2(float.Parse(jn["custom_objects"][i]["pos"]["x"]), float.Parse(jn["custom_objects"][i]["pos"]["y"])));
                     ((Dictionary<string, object>)dictionary[id]).Add("Scale", new Vector2(float.Parse(jn["custom_objects"][i]["sca"]["x"]), float.Parse(jn["custom_objects"][i]["sca"]["y"])));
                     ((Dictionary<string, object>)dictionary[id]).Add("Rotation", float.Parse(jn["custom_objects"][i]["rot"]["x"]));
                     ((Dictionary<string, object>)dictionary[id]).Add("Color", int.Parse(jn["custom_objects"][i]["col"]["x"]));
+
+                    string hex = "FFFFFF";
+                    if (!string.IsNullOrEmpty(jn["custom_objects"][i]["col"]["hex"]))
+                    {
+                        hex = (string)jn["custom_objects"][i]["col"]["hex"];
+                    }
+                    ((Dictionary<string, object>)dictionary[id]).Add("Custom Color", hex);
 
                     float opacity = 1f;
                     if (!string.IsNullOrEmpty(jn["custom_objects"][i]["opa"]["x"]))
@@ -620,6 +1050,24 @@ namespace CreativePlayers.Functions.Data
                     }
 
                     ((Dictionary<string, object>)dictionary[id]).Add("Opacity", opacity);
+
+                    int visib = 0;
+                    if (!string.IsNullOrEmpty(jn["custom_objects"][i]["v"]))
+                        visib = int.Parse(jn["custom_objects"][i]["v"]);
+
+                    ((Dictionary<string, object>)dictionary[id]).Add("Visibility", visib);
+
+                    float visip = 100f;
+                    if (!string.IsNullOrEmpty(jn["custom_objects"][i]["vhp"]))
+                        visip = float.Parse(jn["custom_objects"][i]["vhp"]);
+
+                    ((Dictionary<string, object>)dictionary[id]).Add("Visibility Value", visip);
+
+                    bool visin = false;
+                    if (!string.IsNullOrEmpty(jn["custom_objects"][i]["vn"]))
+                        visin = bool.Parse(jn["custom_objects"][i]["vn"]);
+
+                    ((Dictionary<string, object>)dictionary[id]).Add("Visibility Not", visin);
                 }
             #endregion
 

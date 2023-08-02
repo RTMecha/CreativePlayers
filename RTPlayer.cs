@@ -17,26 +17,81 @@ using LSFunctions;
 
 using CreativePlayers.Functions;
 using CreativePlayers.Functions.Components;
+using CreativePlayers.Functions.Data;
+
+using RTFunctions.Functions;
 
 namespace CreativePlayers
 {
     public class RTPlayer : MonoBehaviour
     {
+        //Player Parent Tree (original):
+        //player-complete (has Player component)
+        //player-complete/Player
+        //player-complete/Player/Player
+        //player-complete/Player/Player/death-explosion
+        //player-complete/Player/Player/burst-explosion
+        //player-complete/Player/Player/spawn-implosion
+        //player-complete/Player/boost
+        //player-complete/trail (has PlayerTrail component)
+        //player-complete/trail/1
+        //player-complete/trail/2
+        //player-complete/trail/3
+
+        #region Base
+
+        public static RTPlayer GetInstance(int index)
+        {
+            if (InputDataManager.inst.players.Count < 1 || InputDataManager.inst.players.Count <= index || InputDataManager.inst.players[index].GetRTPlayer() == null)
+                return null;
+
+            return InputDataManager.inst.players[index].GetRTPlayer();
+        }
+
         public MyGameActions Actions { get; set; }
+
+        public FaceController faceController;
+
+        public int playerIndex;
+
+        public int initialHealthCount;
+
+        public Coroutine boostCoroutine;
+
+        public GameObject canvas;
+
+        public GameObject health;
+
+        private RectTransform barRT;
+        private Image barIm;
+        private Image barBaseIm;
+
+        #endregion
+
+        #region Bool
 
         public bool canBoost = true;
         public bool canMove = true;
         public bool canTakeDamage;
+
+        public bool isTakingHit;
+        public bool isBoosting;
+        public bool isBoostCancelled;
+        public bool isDead = true;
+
+        public bool isKeyboard;
+        private bool animatingBoost;
+
+        #endregion
+
+        #region Velocities
 
         private Vector3 lastPos;
         private float lastMoveHorizontal;
         private float lastMoveVertical;
         private Vector3 lastVelocity;
 
-        public bool isTakingHit;
-        public bool isBoosting;
-        public bool isBoostCancelled;
-        public bool isDead = true;
+        private Vector2 lastMovement;
 
         private float startHurtTime;
         private float startBoostTime;
@@ -46,13 +101,63 @@ namespace CreativePlayers
         public float idleSpeed = 20f;
         public float boostSpeed = 85f;
 
-        public int playerIndex;
+        public bool includeNegativeZoom = false;
+        public MovementMode movementMode = 0;
+
+        public RotateMode rotateMode = RotateMode.RotateToDirection;
+
+        private Vector2 lastMousePos;
+
+        public bool stretch = true;
+        public float stretchAmount = 0.1f;
+        public int stretchEasing = 6;
+        public Vector2 stretchVector = Vector2.zero;
+
+        #endregion
+
+        #region Enums
+
+        public enum RotateMode
+        {
+            RotateToDirection,
+            None,
+            FlipX,
+            FlipY
+        }
+
+        public enum MovementMode
+        {
+            KeyboardController,
+            Mouse
+        }
+
+        #endregion
+
+        #region Tail
+
+        public bool tailGrows = false;
+        public bool boostTail = false;
         public float tailDistance = 2f;
         public int tailMode;
+        public TailUpdateMode updateMode = TailUpdateMode.FixedUpdate;
+        public enum TailUpdateMode
+        {
+            Update,
+            FixedUpdate,
+            LateUpdate
+        }
 
-        public Coroutine boostCoroutine;
+        #endregion
 
-        public bool includeNegativeZoom = false;
+        #region Properties
+
+        public InputDataManager.CustomPlayer CustomPlayer
+        {
+            get
+            {
+                return InputDataManager.inst.players[playerIndex];
+            }
+        }
 
         public bool CanTakeDamage
         {
@@ -98,18 +203,9 @@ namespace CreativePlayers
             }
         }
 
-        //Player Parent Tree (original):
-        //player-complete (has Player component)
-        //player-complete/Player
-        //player-complete/Player/Player
-        //player-complete/Player/Player/death-explosion
-        //player-complete/Player/Player/burst-explosion
-        //player-complete/Player/Player/spawn-implosion
-        //player-complete/Player/boost
-        //player-complete/trail (has PlayerTrail component)
-        //player-complete/trail/1
-        //player-complete/trail/2
-        //player-complete/trail/3
+        #endregion
+
+        #region Delegates
 
         public delegate void PlayerHitDelegate(int _health, Vector3 _pos);
 
@@ -126,13 +222,10 @@ namespace CreativePlayers
         public event PlayerBoostDelegate playerBoostEvent;
 
         public event PlayerDeathDelegate playerDeathEvent;
-        public TailUpdateMode updateMode = TailUpdateMode.FixedUpdate;
-        public enum TailUpdateMode
-        {
-            Update,
-            FixedUpdate,
-            LateUpdate
-        }
+
+        #endregion
+
+        #region Spawn
 
         private void Awake()
         {
@@ -158,6 +251,7 @@ namespace CreativePlayers
             var polygonCollider = rb.AddComponent<PolygonCollider2D>();
 
             playerObjects["RB Parent"].values.Add("CircleCollider2D", circleCollider);
+            playerObjects["RB Parent"].values.Add("PolygonCollider2D", polygonCollider);
             playerObjects["RB Parent"].values.Add("PlayerSelector", rb.AddComponent<PlayerSelector>());
             ((PlayerSelector)playerObjects["RB Parent"].values["PlayerSelector"]).id = playerIndex;
 
@@ -172,10 +266,15 @@ namespace CreativePlayers
 
             playerObjects["Head"].values.Add("MeshRenderer", head.GetComponent<MeshRenderer>());
 
+            polygonCollider.isTrigger = EditorManager.inst != null && PlayerPlugin.ZenEditorIncludesSolid.Value && PlayerPlugin.ZenModeInEditor.Value;
             polygonCollider.enabled = false;
             circleCollider.enabled = true;
 
+            circleCollider.isTrigger = EditorManager.inst != null && PlayerPlugin.ZenEditorIncludesSolid.Value && PlayerPlugin.ZenModeInEditor.Value;
+            rb.GetComponent<Rigidbody2D>().collisionDetectionMode = CollisionDetectionMode2D.Continuous;
+
             var boost = transform.Find("Player/boost").gameObject;
+            boost.transform.localScale = Vector3.zero;
             playerObjects.Add("Boost", new PlayerObject("Boost", transform.Find("Player/boost").gameObject));
             playerObjects["Boost"].values.Add("MeshFilter", boost.GetComponent<MeshFilter>());
             playerObjects["Boost"].values.Add("MeshRenderer", boost.GetComponent<MeshRenderer>());
@@ -233,11 +332,27 @@ namespace CreativePlayers
                 GameObject boostBase = new GameObject("Boost Base");
                 boostBase.layer = 8;
                 boostBase.transform.SetParent(transform.Find("Player"));
-                transform.Find("Player/boost").SetParent(boostBase.transform);
+                boost.transform.SetParent(boostBase.transform);
+                boost.transform.localPosition = Vector3.zero;
 
                 playerObjects.Add("Boost Base", new PlayerObject("Boost Base", boostBase));
 
+                var boostTail = Instantiate(boostBase);
+                boostTail.name = "Boost Tail";
+                boostTail.layer = 8;
+                boostTail.transform.SetParent(transform.Find("trail"));
+
+                playerObjects.Add("Boost Tail Base", new PlayerObject("Boost Tail Base", boostTail));
+                var child = boostTail.transform.GetChild(0);
+
+                bool showBoost = this.boostTail;
+
+                playerObjects.Add("Boost Tail", new PlayerObject("Boost Tail", child.gameObject));
+                playerObjects["Boost Tail"].values.Add("MeshRenderer", child.GetComponent<MeshRenderer>());
+                playerObjects["Boost Tail"].values.Add("MeshFilter", child.GetComponent<MeshFilter>());
+
                 path.Add(new MovementPath(Vector3.zero, Quaternion.identity, rb.transform));
+                path.Add(new MovementPath(Vector3.zero, Quaternion.identity, boostTail.transform, showBoost));
                 path.Add(new MovementPath(Vector3.zero, Quaternion.identity, trail1Base.transform));
                 path.Add(new MovementPath(Vector3.zero, Quaternion.identity, trail2Base.transform));
                 path.Add(new MovementPath(Vector3.zero, Quaternion.identity, trail3Base.transform));
@@ -251,34 +366,30 @@ namespace CreativePlayers
                 delayTarget.transform.localPosition = new Vector3(-0.5f, 0f, 0.1f);
                 playerObjects.Add("Tail Tracker", new PlayerObject("Tail Tracker", delayTarget));
 
-                //NameTag
-                canvas = RTExtensions.CreateCanvas("Name Tag Canvas");
-                canvas.transform.SetParent(transform);
-                GameObject e = new GameObject("Base");
-                e.transform.SetParent(canvas.transform);
-                var image = RTExtensions.GenerateUIImage("Image", e.transform);
-                var text = RTExtensions.GenerateUIText("Text", ((GameObject)image["GameObject"]).transform);
+                var faceBase = new GameObject("face-base");
+                faceBase.transform.SetParent(rb.transform);
+                faceBase.transform.localPosition = Vector3.zero;
+                faceBase.transform.localScale = Vector3.one;
+                playerObjects.Add("Face Base", new PlayerObject("Face Base", faceBase));
 
-                RTExtensions.SetRectTransform((RectTransform)image["RectTransform"], new Vector2(960f, 585f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(166f, 44f));
-                var component = (Text)text["Text"];
-                component.text = "Player " + (playerIndex + 1).ToString() + "[===]";
-                component.alignment = TextAnchor.MiddleCenter;
-
-                ((RectTransform)text["RectTransform"]).sizeDelta = new Vector2(200f, 100f);
-
-                playerObjects.Add("NameTag Text", new PlayerObject("NameTag Text", (GameObject)text["GameObject"]));
-                playerObjects.Add("NameTag Image", new PlayerObject("NameTag Image", (GameObject)image["GameObject"]));
-
-                playerObjects["NameTag Text"].values.Add("Text", component);
-                playerObjects["NameTag Image"].values.Add("Image", (Image)image["Image"]);
+                var faceParent = new GameObject("face-parent");
+                faceParent.transform.SetParent(faceBase.transform);
+                faceParent.transform.localPosition = Vector3.zero;
+                faceParent.transform.localScale = Vector3.one;
+                playerObjects.Add("Face Parent", new PlayerObject("Face Parent", faceParent));
 
                 //DelayTracker
+                var boostDelay = playerObjects["Boost Tail Base"].gameObject.AddComponent<DelayTracker>();
+                boostDelay.leader = delayTarget.transform;
+                boostDelay.player = this;
+                playerObjects["Boost Tail Base"].values.Add("DelayTracker", boostDelay);
+
                 for (int i = 1; i < 4; i++)
                 {
                     var tail = playerObjects[string.Format("Tail {0} Base", i)].gameObject;
                     var delayTracker = tail.AddComponent<DelayTracker>();
                     delayTracker.offset = -i * tailDistance / 2f;
-                    delayTracker.followSharpness *= (-i + 4);
+                    delayTracker.positionOffset *= (-i + 4);
                     delayTracker.player = this;
                     delayTracker.leader = delayTarget.transform;
                     playerObjects[string.Format("Tail {0} Base", i)].values.Add("DelayTracker", delayTracker);
@@ -403,10 +514,39 @@ namespace CreativePlayers
                 }
             }
 
-            updatePlayer();
-        }
+            health = Instantiate(PlayerPlugin.healthImages);
+            health.transform.SetParent(PlayerPlugin.healthParent);
+            health.transform.localScale = Vector3.one;
+            health.name = "Health " + playerIndex.ToString();
 
-        public GameObject canvas;
+            for (int i = 0; i < 3; i++)
+            {
+                healthObjects.Add(new HealthObject(health.transform.GetChild(i).gameObject, health.transform.GetChild(i).GetComponent<Image>()));
+            }
+
+            var barBase = new GameObject("Bar Base");
+            barBase.transform.SetParent(health.transform);
+            barBase.transform.localScale = Vector3.one;
+
+            var barBaseRT = barBase.AddComponent<RectTransform>();
+            var barBaseLE = barBase.AddComponent<LayoutElement>();
+            barBaseIm = barBase.AddComponent<Image>();
+
+            barBaseLE.ignoreLayout = true;
+            barBaseRT.anchoredPosition = new Vector2(-100f, 0f);
+            barBaseRT.pivot = new Vector2(0f, 0.5f);
+            barBaseRT.sizeDelta = new Vector2(200f, 32f);
+
+            var bar = new GameObject("Bar");
+            bar.transform.SetParent(barBase.transform);
+            bar.transform.localScale = Vector3.one;
+
+            barRT = bar.AddComponent<RectTransform>();
+            barIm = bar.AddComponent<Image>();
+
+            barRT.pivot = new Vector2(0f, 0.5f);
+            barRT.anchoredPosition = new Vector2(-100f, 0f);
+        }
 
         private void Start()
         {
@@ -416,24 +556,85 @@ namespace CreativePlayers
             Spawn();
         }
 
-        //15.4791 -4.9977 -162
-        //15.4785 -4.997 -162
-        //0.5733 -0.1851 -6
+        private void Spawn()
+        {
+            //var anim = (Animator)playerObjects["Base"].values["Animator"];
+            var currentModel = PlayerPlugin.CurrentModel(playerIndex);
+            var rb = (Rigidbody2D)playerObjects["RB Parent"].values["Rigidbody2D"];
+            if (EditorManager.inst == null && DataManager.inst.GetSettingEnum("ArcadeDifficulty", 0) == 3)
+            {
+                InputDataManager.inst.players[playerIndex].health = 1;
+                UpdateTail(InputDataManager.inst.players[playerIndex].health, rb.position);
+            }
+            else
+            {
+                if (currentModel != null)
+                {
+                    InputDataManager.inst.players[playerIndex].health = (int)currentModel.values["Base Health"];
+                    UpdateTail(InputDataManager.inst.players[playerIndex].health, rb.position);
+                }
+                else
+                {
+                    InputDataManager.inst.players[playerIndex].health = 3;
+                }
+            }
+            CanTakeDamage = false;
+            CanBoost = false;
+            CanMove = false;
+            isDead = false;
+            isBoosting = false;
+            ((Animator)playerObjects["Base"].values["Animator"]).SetTrigger("spawn");
+            PlaySpawnParticles();
+            SetBindings(Actions);
+        }
 
+        private MyGameActions SetBindings(MyGameActions _actions)
+        {
+            if (EditorManager.inst != null)
+            {
+                MyGameActions myGameActions = _actions;
+                myGameActions.Up.AddDefaultBinding(InputControlType.DPadUp);
+                myGameActions.Up.AddDefaultBinding(InputControlType.LeftStickUp);
+                myGameActions.Down.AddDefaultBinding(InputControlType.DPadDown);
+                myGameActions.Down.AddDefaultBinding(InputControlType.LeftStickDown);
+                myGameActions.Left.AddDefaultBinding(InputControlType.DPadLeft);
+                myGameActions.Left.AddDefaultBinding(InputControlType.LeftStickLeft);
+                myGameActions.Right.AddDefaultBinding(InputControlType.DPadRight);
+                myGameActions.Right.AddDefaultBinding(InputControlType.LeftStickRight);
+                myGameActions.Boost.AddDefaultBinding(InputControlType.RightTrigger);
+                myGameActions.Boost.AddDefaultBinding(InputControlType.RightBumper);
+                myGameActions.Boost.AddDefaultBinding(InputControlType.Action1);
+                myGameActions.Boost.AddDefaultBinding(InputControlType.Action3);
+                myGameActions.Join.AddDefaultBinding(InputControlType.Action1);
+                myGameActions.Join.AddDefaultBinding(InputControlType.Action2);
+                myGameActions.Join.AddDefaultBinding(InputControlType.Action3);
+                myGameActions.Join.AddDefaultBinding(InputControlType.Action4);
+                myGameActions.Pause.AddDefaultBinding(InputControlType.Command);
+                myGameActions.Escape.AddDefaultBinding(InputControlType.Action2);
+                myGameActions.Escape.AddDefaultBinding(InputControlType.Action4);
+                return myGameActions;
+            }
+            return _actions;
+        }
+
+        #endregion
+
+        #region Update Methods
 
         private void Update()
         {
-            UpdateCustomTheme();
+            UpdateCustomTheme(); UpdateBoostTheme(); UpdateSpeeds();
             if (canvas != null)
             {
-                bool act = EditorManager.inst == null || EditorManager.inst != null && !EditorManager.inst.isEditing;
-                canvas.SetActive(act);
-                if (act)
+                bool act = (EditorManager.inst == null || EditorManager.inst != null && !EditorManager.inst.isEditing) && InputDataManager.inst.players.Count > 1;
+                canvas.SetActive(act && PlayerPlugin.PlayerNameTags.Value);
+
+                if (act && PlayerPlugin.PlayerNameTags.Value && playerObjects.ContainsKey("NameTag Text") && playerObjects.ContainsKey("NameTag Image") && playerObjects["NameTag Text"].values["Text"] != null && playerObjects["NameTag Image"].values["Image"] != null)
                 {
                     Vector3 v = playerObjects["Head"].gameObject.transform.position + -(GameObject.Find("Camera Parent").transform.position + GameObject.Find("Camera Parent/cameras").transform.localPosition);
                     canvas.transform.Find("Base").position = v * 27f;
                     var text = (Text)playerObjects["NameTag Text"].values["Text"];
-                    text.text = "Player " + (playerIndex + 1).ToString() + " " + RTExtensions.ConvertHealthToEquals(InputDataManager.inst.players[playerIndex].health);
+                    text.text = "Player " + (playerIndex + 1).ToString() + " " + PlayerExtensions.ConvertHealthToEquals(InputDataManager.inst.players[playerIndex].health, initialHealthCount);
                     text.color = GameManager.inst.LiveTheme.guiColor;
 
                     ((Image)playerObjects["NameTag Image"].values["Image"]).color = LSColors.fadeColor(GameManager.inst.LiveTheme.guiColor, 0.3f);
@@ -465,7 +666,7 @@ namespace CreativePlayers
                 }
             }
 
-            var currentModel = PlayerPlugin.playerModels[PlayerPlugin.playerModelsIndex[playerIndex]];
+            var currentModel = PlayerPlugin.CurrentModel(playerIndex);
             if (playerObjects["Boost Trail"].values["TrailRenderer"] != null && currentModel != null && (bool)currentModel.values["Boost Trail Emitting"])
             {
                 var tf = playerObjects["Boost"].gameObject.transform;
@@ -482,6 +683,18 @@ namespace CreativePlayers
             {
                 UpdateTailDistance();
             }
+
+            health.SetActive(GameManager.inst.timeline.activeSelf);
+
+            if (InputDataManager.inst.players[playerIndex].health > path.Count - 2 && tailGrows)
+            {
+                var t = Instantiate(path[path.Count - 2].transform.gameObject);
+                t.transform.SetParent(playerObjects["Tail Parent"].gameObject.transform);
+                t.transform.localScale = Vector3.one;
+                t.name = string.Format("Tail {0}", path.Count - 2);
+
+                path.Insert(path.Count - 2, new MovementPath(t.transform.localPosition, t.transform.localRotation, t.transform));
+            }
         }
 
         private void LateUpdate()
@@ -490,13 +703,14 @@ namespace CreativePlayers
             {
                 UpdateTailDistance();
             }
-            UpdateTailTransform();
+            UpdateTailTransform(); UpdateTailDev(); UpdateTailSizes();
 
             var rb = (Rigidbody2D)playerObjects["RB Parent"].values["Rigidbody2D"];
             var anim = (Animator)playerObjects["Base"].values["Animator"];
             var player = playerObjects["RB Parent"].gameObject;
+            var currentModel = PlayerPlugin.CurrentModel(playerIndex);
 
-            if (PlayerAlive && Actions != null && InputDataManager.inst.players[playerIndex].active && CanMove && (GameManager.inst == null || GameManager.inst.gameState != GameManager.State.Paused) && !LSHelpers.IsUsingInputField())
+            if (PlayerAlive && Actions != null && InputDataManager.inst.players[playerIndex].active && CanMove && (GameManager.inst == null || GameManager.inst.gameState != GameManager.State.Paused) && !LSHelpers.IsUsingInputField() && movementMode == MovementMode.KeyboardController)
             {
                 float x = Actions.Move.Vector.x;
                 float y = Actions.Move.Vector.y;
@@ -516,12 +730,21 @@ namespace CreativePlayers
                         lastMoveHorizontal = 0f;
                     }
                 }
+
+                float pitch = PlayerExtensions.Pitch;
+
                 Vector3 vector = Vector3.zero;
                 if (isBoosting)
                 {
                     vector = new Vector3(lastMoveHorizontal, lastMoveVertical, 0f);
                     vector = vector.normalized;
-                    rb.velocity = vector * boostSpeed * ((GameManager.inst != null) ? GameManager.inst.getPitch() : 1f);
+
+                    rb.velocity = vector * boostSpeed * pitch;
+                    if (stretch && rb.velocity.magnitude > 0f)
+                    {
+                        float e = 1f + rb.velocity.magnitude * stretchAmount / 20f;
+                        player.transform.localScale = new Vector3(1f * e + stretchVector.x, 1f / e + stretchVector.y, 1f);
+                    }
                 }
                 else
                 {
@@ -530,34 +753,257 @@ namespace CreativePlayers
                     {
                         vector = vector.normalized;
                     }
-                    rb.velocity = vector * idleSpeed * ((GameManager.inst != null) ? GameManager.inst.getPitch() : 1f);
+
+                    var sp = 1f;
+                    if ((bool)currentModel.values["Base Sprint Sneak Active"])
+                    {
+                        if (isKeyboard && (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift)) && !(Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl)) || Input.GetKey(GetKeyCode(99)))
+                        {
+                            sp = 0.1f;
+                        }
+                        if (isKeyboard && !(Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift)) && (Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl)) || Input.GetKey(GetKeyCode(95)))
+                        {
+                            sp = 1.3f;
+                        }
+                    }
+
+                    rb.velocity = vector * idleSpeed * pitch * sp;
+                    if (stretch && rb.velocity.magnitude > 0f)
+                    {
+                        if (rotateMode != RotateMode.None && rotateMode != RotateMode.FlipX)
+                        {
+                            float e = 1f + rb.velocity.magnitude * stretchAmount / 20f;
+                            player.transform.localScale = new Vector3(1f * e + stretchVector.x, 1f / e + stretchVector.y, 1f);
+                        }
+                        if (rotateMode == RotateMode.None || rotateMode == RotateMode.FlipX || rotateMode == RotateMode.FlipY)
+                        {
+                            float e = 1f + rb.velocity.magnitude * stretchAmount / 20f;
+
+                            float xm = lastMoveHorizontal;
+                            if (xm > 0f)
+                                xm = -xm;
+
+                            float ym = lastMoveVertical;
+                            if (ym > 0f)
+                                ym = -ym;
+
+                            float xt = 1f * e + ym + stretchVector.x;
+                            float yt = 1f * e + xm + stretchVector.y;
+
+                            if (rotateMode == RotateMode.FlipX)
+                            {
+                                if (lastMovement.x > 0f)
+                                    player.transform.localScale = new Vector3(xt, yt, 1f);
+                                if (lastMovement.x < 0f)
+                                    player.transform.localScale = new Vector3(-xt, yt, 1f);
+                            }
+                            if (rotateMode == RotateMode.FlipY)
+                            {
+                                if (lastMovement.y > 0f)
+                                    player.transform.localScale = new Vector3(xt, yt, 1f);
+                                if (lastMovement.y < 0f)
+                                    player.transform.localScale = new Vector3(xt, -yt, 1f);
+                            }
+                            if (rotateMode == RotateMode.None)
+                            {
+                                player.transform.localScale = new Vector3(xt, yt, 1f);
+                            }
+                        }
+                    }
+                    else if (stretch)
+                    {
+                        float xt = 1f + stretchVector.x;
+                        float yt = 1f + stretchVector.y;
+
+                        if (rotateMode == RotateMode.FlipX)
+                        {
+                            if (lastMovement.x > 0f)
+                                player.transform.localScale = new Vector3(xt, yt, 1f);
+                            if (lastMovement.x < 0f)
+                                player.transform.localScale = new Vector3(-xt, yt, 1f);
+                        }
+                        if (rotateMode == RotateMode.FlipY)
+                        {
+                            if (lastMovement.y > 0f)
+                                player.transform.localScale = new Vector3(xt, yt, 1f);
+                            if (lastMovement.y < 0f)
+                                player.transform.localScale = new Vector3(xt, -yt, 1f);
+                        }
+                        if (rotateMode == RotateMode.None)
+                        {
+                            player.transform.localScale = new Vector3(xt, yt, 1f);
+                        }
+                    }
                 }
                 anim.SetFloat("Speed", Mathf.Abs(vector.x + vector.y));
                 //Consider moving this outside to test.
-                Quaternion b = Quaternion.AngleAxis(Mathf.Atan2(lastVelocity.y, lastVelocity.x) * 57.29578f, player.transform.forward);
-                player.transform.rotation = Quaternion.Slerp(player.transform.rotation, b, 720f * Time.deltaTime);
-                player.transform.eulerAngles = new Vector3(0f, 0f, player.transform.eulerAngles.z);
+                //Quaternion b = Quaternion.AngleAxis(Mathf.Atan2(lastVelocity.y, lastVelocity.x) * 57.29578f, player.transform.forward);
+                //player.transform.rotation = Quaternion.Slerp(player.transform.rotation, b, 720f * Time.deltaTime);
+                //player.transform.eulerAngles = new Vector3(0f, 0f, player.transform.eulerAngles.z);
 
                 if (rb.velocity != Vector2.zero)
                 {
                     lastVelocity = rb.velocity;
                 }
 
-                player.transform.rotation = Quaternion.Euler(0f, 0f, player.transform.rotation.eulerAngles.z);
+                //player.transform.rotation = Quaternion.Euler(0f, 0f, player.transform.rotation.eulerAngles.z);
             }
             else if (CanMove)
             {
                 rb.velocity = Vector3.zero;
             }
+
+            if (PlayerAlive && InputDataManager.inst.players[playerIndex].active && CanMove && (GameManager.inst == null || GameManager.inst.gameState != GameManager.State.Paused) && !LSHelpers.IsUsingInputField() && movementMode == MovementMode.Mouse && (EditorManager.inst == null || !EditorManager.inst.isEditing) && Application.isFocused && isKeyboard)
+            {
+                Vector2 screenCenter = new Vector2(1920 / 2 * (int)EditorManager.inst.ScreenScale, 1080 / 2 * (int)EditorManager.inst.ScreenScale);
+                Vector2 mousePos = new Vector2(System.Windows.Forms.Cursor.Position.X - screenCenter.x, -(System.Windows.Forms.Cursor.Position.Y - (screenCenter.y * 2)) - screenCenter.y);
+
+                if (lastMousePos != new Vector2(System.Windows.Forms.Cursor.Position.X, System.Windows.Forms.Cursor.Position.Y))
+                {
+                    System.Windows.Forms.Cursor.Position = new System.Drawing.Point((int)screenCenter.x, (int)screenCenter.y);
+                }
+
+                float num = idleSpeed * 0.00025f;
+                if (isBoosting)
+                    num = boostSpeed * 0.0001f;
+
+                player.transform.position += new Vector3(mousePos.x * num, mousePos.y * num, 0f);
+                lastMousePos = new Vector2(System.Windows.Forms.Cursor.Position.X, System.Windows.Forms.Cursor.Position.Y);
+            }
+
             Vector3 vector2 = Camera.main.WorldToViewportPoint(player.transform.position);
             vector2.x = Mathf.Clamp(vector2.x, 0f, 1f);
             vector2.y = Mathf.Clamp(vector2.y, 0f, 1f);
-            if (Camera.main.orthographicSize > 0f && (includeNegativeZoom && Camera.main.orthographicSize < 0f || !includeNegativeZoom))
+            if (Camera.main.orthographicSize > 0f && (!includeNegativeZoom || Camera.main.orthographicSize < 0f))
             {
                 float maxDistanceDelta = Time.deltaTime * 1500f;
                 player.transform.position = Vector3.MoveTowards(lastPos, Camera.main.ViewportToWorldPoint(vector2), maxDistanceDelta);
             }
+
+            if ((bool)currentModel.values["Face Control Active"] && faceController != null)
+            {
+                var vector = new Vector2(faceController.Move.Vector.x, faceController.Move.Vector.y);
+                var fp = (Vector2)currentModel.values["Face Position"];
+                if (vector.magnitude > 1f)
+                {
+                    vector = vector.normalized;
+                }
+                if (rotateMode == RotateMode.FlipX && lastMovement.x < 0f)
+                    vector.x = -vector.x;
+                if (rotateMode == RotateMode.FlipY && lastMovement.y < 0f)
+                    vector.y = -vector.y;
+
+                playerObjects["Face Parent"].gameObject.transform.localPosition = new Vector3(vector.x * 0.3f + fp.x, vector.y * 0.3f + fp.y, 0f);
+            }
+
+            if (rotateMode != RotateMode.RotateToDirection)
+            {
+                Quaternion b = Quaternion.AngleAxis(Mathf.Atan2(lastMovement.y, lastMovement.x) * 57.29578f, player.transform.forward);
+
+                var c = Quaternion.Slerp(player.transform.rotation, b, 720f * Time.deltaTime).eulerAngles;
+
+                if (c.z > 90f && c.z < 270f)
+                {
+                    c.z = -c.z + 180f;
+                }
+
+                playerObjects["Face Base"].gameObject.transform.rotation = Quaternion.Euler(c);
+            }
+            if (rotateMode == RotateMode.RotateToDirection)
+            {
+                Quaternion b = Quaternion.AngleAxis(Mathf.Atan2(lastMovement.y, lastMovement.x) * 57.29578f, player.transform.forward);
+                player.transform.rotation = Quaternion.Slerp(player.transform.rotation, b, 720f * Time.deltaTime);
+
+                playerObjects["Face Base"].gameObject.transform.rotation = Quaternion.identity;
+            }
+            if (rotateMode == RotateMode.FlipX)
+            {
+                player.transform.rotation = Quaternion.identity;
+                if (lastMovement.x > 0.001f)
+                {
+                    if (!stretch)
+                        player.transform.localScale = Vector3.one;
+                    if (!animatingBoost)
+                        playerObjects["Boost Tail Base"].gameObject.transform.localScale = Vector3.one;
+                    playerObjects["Tail 1 Base"].gameObject.transform.localScale = Vector3.one;
+                    playerObjects["Tail 2 Base"].gameObject.transform.localScale = Vector3.one;
+                    playerObjects["Tail 3 Base"].gameObject.transform.localScale = Vector3.one;
+                }
+                if (lastMovement.x < -0.001f)
+                {
+                    var c = new Vector3(-1f, 1f, 1f);
+                    if (!stretch)
+                        player.transform.localScale = c;
+                    if (!animatingBoost)
+                        playerObjects["Boost Tail Base"].gameObject.transform.localScale = c;
+                    playerObjects["Tail 1 Base"].gameObject.transform.localScale = c;
+                    playerObjects["Tail 2 Base"].gameObject.transform.localScale = c;
+                    playerObjects["Tail 3 Base"].gameObject.transform.localScale = c;
+                }
+            }
+            else if (rotateMode == RotateMode.FlipY)
+            {
+                player.transform.rotation = Quaternion.identity;
+                if (lastMovement.y > 0.001f)
+                {
+                    if (!stretch)
+                        player.transform.localScale = Vector3.one;
+                    if (!animatingBoost)
+                        playerObjects["Boost Tail Base"].gameObject.transform.localScale = Vector3.one;
+                    playerObjects["Tail 1 Base"].gameObject.transform.localScale = Vector3.one;
+                    playerObjects["Tail 2 Base"].gameObject.transform.localScale = Vector3.one;
+                    playerObjects["Tail 3 Base"].gameObject.transform.localScale = Vector3.one;
+                }
+                if (lastMovement.y < -0.001f)
+                {
+                    var c = new Vector3(1f, -1f, 1f);
+                    if (!stretch)
+                        player.transform.localScale = c;
+                    if (!animatingBoost)
+                        playerObjects["Boost Tail Base"].gameObject.transform.localScale = c;
+                    playerObjects["Tail 1 Base"].gameObject.transform.localScale = c;
+                    playerObjects["Tail 2 Base"].gameObject.transform.localScale = c;
+                    playerObjects["Tail 3 Base"].gameObject.transform.localScale = c;
+                }
+            }
+
+            if (rotateMode == RotateMode.None)
+            {
+                player.transform.rotation = Quaternion.identity;
+            }
+
+            var posCalc = (player.transform.position - lastPos) * 50.2008f;
+
+            if (posCalc.x < -0.001f || posCalc.x > 0.001f || posCalc.y < -0.001f || posCalc.y > 0.001f)
+            {
+                lastMovement = posCalc;
+            }
+
             lastPos = player.transform.position;
+        }
+
+        private void UpdateSpeeds()
+        {
+            var currentModel = PlayerPlugin.CurrentModel(playerIndex);
+
+            var idl = (float)currentModel.values["Base Move Speed"];
+            var bst = (float)currentModel.values["Base Boost Speed"];
+            var bstcldwn = (float)currentModel.values["Base Boost Cooldown"];
+            var bstmin = (float)currentModel.values["Base Min Boost Time"];
+            var bstmax = (float)currentModel.values["Base Max Boost Time"];
+
+            float pitch = AudioManager.inst.pitch;
+            if (pitch < 0f)
+            {
+                pitch = -pitch;
+            }
+
+            idleSpeed = idl;
+            boostSpeed = bst;
+
+            boostCooldown = bstcldwn / pitch;
+            minBoostTime = bstmin / pitch;
+            maxBoostTime = bstmax / pitch;
         }
 
         public void UpdateTailDistance()
@@ -566,26 +1012,46 @@ namespace CreativePlayers
             path[0].rot = ((Transform)playerObjects["RB Parent"].values["Transform"]).rotation;
             for (int i = 1; i < path.Count; i++)
             {
-                if (Vector3.Distance(path[i].pos, path[i - 1].pos) > tailDistance)
+                int num = i - 1;
+
+                if (i == 2 && !path[1].active)
                 {
-                    Vector3 pos = Vector3.Lerp(path[i].pos, path[i - 1].pos, Time.deltaTime * 12f);
-                    Quaternion rot = Quaternion.Lerp(path[i].rot, path[i - 1].rot, Time.deltaTime * 12f);
-                    path[i].pos = pos;
-                    path[i].rot = rot;
+                    num = i - 2;
+                }
+
+                if (Vector3.Distance(path[i].pos, path[num].pos) > tailDistance)
+                {
+                    Vector3 pos = Vector3.Lerp(path[i].pos, path[num].pos, Time.deltaTime * 12f);
+                    Quaternion rot = Quaternion.Lerp(path[i].rot, path[num].rot, Time.deltaTime * 12f);
+
+                    if (tailMode == 0)
+                    {
+                        path[i].pos = pos;
+                        path[i].rot = rot;
+                    }
+
+                    if (tailMode > 1)
+                    {
+                        path[i].pos = new Vector3(RTMath.RoundToNearestDecimal(pos.x, 1), RTMath.RoundToNearestDecimal(pos.y, 1), RTMath.RoundToNearestDecimal(pos.z, 1));
+
+                        var r = rot.eulerAngles;
+
+                        path[i].rot = Quaternion.Euler((int)r.x, (int)r.y, (int)r.z);
+                    }
                 }
             }
         }
 
         public void UpdateTailTransform()
         {
-            if (tailMode != 0)
+            if (tailMode == 1)
                 return;
             if (GameManager.inst == null || GameManager.inst.gameState != GameManager.State.Paused)
             {
                 float num = Time.deltaTime * 200f;
                 for (int i = 1; i < path.Count; i++)
                 {
-                    if (InputDataManager.inst.players.Count > 0 && path.Count >= i && path[i].transform != null)
+                    if (InputDataManager.inst.players.Count > 0 && path.Count >= i && path[i].transform != null && path[i].transform.gameObject.activeSelf)
                     {
                         num *= Vector3.Distance(path[i].lastPos, path[i].pos);
                         path[i].transform.position = Vector3.MoveTowards(path[i].lastPos, path[i].pos, num);
@@ -596,40 +1062,65 @@ namespace CreativePlayers
             }
         }
 
-        private void Spawn()
+        public void UpdateTailDev()
         {
-            //var anim = (Animator)playerObjects["Base"].values["Animator"];
-            var currentModel = PlayerPlugin.playerModels[PlayerPlugin.playerModelsIndex[playerIndex]];
-            var rb = (Rigidbody2D)playerObjects["RB Parent"].values["Rigidbody2D"];
-            if (EditorManager.inst == null && DataManager.inst.GetSettingEnum("ArcadeDifficulty", 0) == 3)
+            if (tailMode != 1)
+                return;
+            if (GameManager.inst == null || GameManager.inst.gameState != GameManager.State.Paused)
             {
-                InputDataManager.inst.players[playerIndex].health = 1;
-                UpdateTail(InputDataManager.inst.players[playerIndex].health, rb.position);
-            }
-            else
-            {
-                if (currentModel != null)
+                for (int i = 1; i < path.Count; i++)
                 {
-                    InputDataManager.inst.players[playerIndex].health = (int)currentModel.values["Base Health"];
-                    UpdateTail(InputDataManager.inst.players[playerIndex].health, rb.position);
-                }
-                else
-                {
-                    InputDataManager.inst.players[playerIndex].health = 3;
+                    int num = i;
+                    if (boostTail && path[1].active)
+                    {
+                        num += 1;
+                    }
+
+                    if (i == 1)
+                    {
+                        var delayTracker = (DelayTracker)playerObjects["Boost Tail Base"].values["DelayTracker"];
+                        if (rotateMode != RotateMode.FlipX || rotateMode == RotateMode.FlipX && lastMovement.x > 0f)
+                            delayTracker.offset = -i * tailDistance / 2f;
+                        else if (rotateMode == RotateMode.FlipX && lastMovement.x < 0)
+                            delayTracker.offset = -(-i * tailDistance / 2f);
+                        delayTracker.positionOffset = 0.1f * (-i + 5);
+                        delayTracker.rotationOffset = 0.1f * (-i + 5);
+                    }
+
+                    if (playerObjects.ContainsKey(string.Format("Tail {0} Base", i)))
+                    {
+                        var delayTracker = (DelayTracker)playerObjects[string.Format("Tail {0} Base", i)].values["DelayTracker"];
+                        if (rotateMode != RotateMode.FlipX || rotateMode == RotateMode.FlipX && lastMovement.x > 0f)
+                            delayTracker.offset = -num * tailDistance / 2f;
+                        else if (rotateMode == RotateMode.FlipX && lastMovement.x < 0)
+                            delayTracker.offset = -(-num * tailDistance / 2f);
+                        delayTracker.positionOffset = 0.1f * (-num + 5);
+                        delayTracker.rotationOffset = 0.1f * (-num + 5);
+                    }
                 }
             }
-            CanTakeDamage = false;
-            CanBoost = false;
-            CanMove = false;
-            isDead = false;
-            isBoosting = false;
-            ((Animator)playerObjects["Base"].values["Animator"]).SetTrigger("spawn");
-            PlaySpawnParticles();
         }
+
+        private void UpdateTailSizes()
+        {
+            var currentModel = PlayerPlugin.CurrentModel(playerIndex);
+            if (currentModel == null)
+                return;
+            for (int i = 1; i < 4; i++)
+            {
+                var t2 = (Vector2)currentModel.values[string.Format("Tail {0} Scale", i)];
+
+                playerObjects[string.Format("Tail {0}", i)].gameObject.transform.localScale = new Vector3(t2.x, t2.y, 1f);
+            }
+        }
+
+        #endregion
+
+        #region Collision Handlers
 
         public void OnChildTriggerEnter(Collider2D _other)
         {
-            if ((EditorManager.inst != null && PlayerPlugin.zenModeInEditor.Value || EditorManager.inst == null) && _other.tag != "Helper" && _other.tag != "Player" && CanTakeDamage && !isBoosting)
+            if ((EditorManager.inst != null && !PlayerPlugin.ZenModeInEditor.Value || EditorManager.inst == null) && _other.tag != "Helper" && _other.tag != "Player" && CanTakeDamage && !isBoosting)
             {
                 PlayerHit();
             }
@@ -637,7 +1128,7 @@ namespace CreativePlayers
 
         public void OnChildTriggerEnterMesh(Collider _other)
         {
-            if ((EditorManager.inst != null && PlayerPlugin.zenModeInEditor.Value || EditorManager.inst == null) && _other.tag != "Helper" && _other.tag != "Player" && CanTakeDamage && !isBoosting)
+            if ((EditorManager.inst != null && !PlayerPlugin.ZenModeInEditor.Value || EditorManager.inst == null) && _other.tag != "Helper" && _other.tag != "Player" && CanTakeDamage && !isBoosting)
             {
                 PlayerHit();
             }
@@ -645,7 +1136,7 @@ namespace CreativePlayers
 
         public void OnChildTriggerStay(Collider2D _other)
         {
-            if ((EditorManager.inst != null && PlayerPlugin.zenModeInEditor.Value || EditorManager.inst == null) && _other.tag != "Helper" && _other.tag != "Player" && CanTakeDamage)
+            if ((EditorManager.inst != null && !PlayerPlugin.ZenModeInEditor.Value || EditorManager.inst == null) && _other.tag != "Helper" && _other.tag != "Player" && CanTakeDamage)
             {
                 PlayerHit();
             }
@@ -653,11 +1144,15 @@ namespace CreativePlayers
 
         public void OnChildTriggerStayMesh(Collider _other)
         {
-            if ((EditorManager.inst != null && PlayerPlugin.zenModeInEditor.Value || EditorManager.inst == null) && _other.tag != "Helper" && _other.tag != "Player" && CanTakeDamage)
+            if ((EditorManager.inst != null && !PlayerPlugin.ZenModeInEditor.Value || EditorManager.inst == null) && _other.tag != "Helper" && _other.tag != "Player" && CanTakeDamage)
             {
                 PlayerHit();
             }
         }
+
+        #endregion
+
+        #region Init
 
         private void PlayerHit()
         {
@@ -682,8 +1177,35 @@ namespace CreativePlayers
 
         private IEnumerator BoostCooldownLoop()
         {
-            yield return new WaitForSeconds(boostCooldown);
+            var player = playerObjects["RB Parent"].gameObject;
+            var currentModel = PlayerPlugin.CurrentModel(playerIndex);
+            var headTrail = (TrailRenderer)playerObjects["Boost Trail"].values["TrailRenderer"];
+            if ((bool)currentModel.values["Head Trail Emitting"])
+            {
+                headTrail.emitting = false;
+            }
+
+            DOTween.To(delegate (float x)
+            {
+                stretchVector = new Vector2(x, -x);
+            }, stretchAmount * 1.5f, 0f, 1.5f).SetEase(DataManager.inst.AnimationList[stretchEasing].Animation);
+
+            yield return new WaitForSeconds(boostCooldown / PlayerExtensions.Pitch);
             CanBoost = true;
+            if (PlayerPlugin.PlaySoundR.Value)
+            {
+                AudioManager.inst.PlaySound("boost_recover");
+            }
+
+            if (boostTail)
+            {
+                path[1].active = true;
+                var tweener = playerObjects["Boost Tail Base"].gameObject.transform.DOScale(Vector3.one, 0.1f / PlayerExtensions.Pitch).SetEase(DataManager.inst.AnimationList[9].Animation);
+                tweener.OnComplete(delegate ()
+                {
+                    animatingBoost = false;
+                });
+            }
             yield break;
         }
 
@@ -700,6 +1222,7 @@ namespace CreativePlayers
             InputDataManager.inst.SetControllerRumble(playerIndex, 1f);
             yield return new WaitForSecondsRealtime(0.2f);
             PlayerPlugin.players.RemoveAt(playerIndex);
+            Destroy(health);
             Destroy(gameObject);
             InputDataManager.inst.StopControllerRumble(playerIndex);
             yield break;
@@ -707,12 +1230,14 @@ namespace CreativePlayers
 
         public void InitMidSpawn()
         {
+            Debug.LogFormat("{0}InitMidSpawn: {1}", PlayerPlugin.className, playerIndex);
             CanMove = true;
             CanBoost = true;
         }
 
         public void InitAfterSpawn()
         {
+            Debug.LogFormat("{0}InitAfterSpawn: {1}", PlayerPlugin.className, playerIndex);
             if (boostCoroutine != null)
             {
                 StopCoroutine(boostCoroutine);
@@ -735,7 +1260,7 @@ namespace CreativePlayers
                 var ps = (ParticleSystem)playerObjects["Boost Particles"].values["ParticleSystem"];
                 var emission = ps.emission;
 
-                var currentModel = PlayerPlugin.playerModels[PlayerPlugin.playerModelsIndex[playerIndex]];
+                var currentModel = PlayerPlugin.CurrentModel(playerIndex);
                 var headTrail = (TrailRenderer)playerObjects["Boost Trail"].values["TrailRenderer"];
 
                 if (emission.enabled)
@@ -746,8 +1271,153 @@ namespace CreativePlayers
                 {
                     headTrail.emitting = true;
                 }
+
+                if (PlayerPlugin.PlaySoundB.Value)
+                {
+                    AudioManager.inst.PlaySound("boost");
+                }
+
+                CreatePulse();
+
+                stretchVector = new Vector2(stretchAmount * 1.5f, -(stretchAmount * 1.5f));
+
+                if (boostTail)
+                {
+                    path[1].active = false;
+                    animatingBoost = true;
+                    playerObjects["Boost Tail Base"].gameObject.transform.DOScale(Vector3.zero, 0.05f / PlayerExtensions.Pitch).SetEase(DataManager.inst.AnimationList[2].Animation);
+                }
             }
         }
+
+        public void CreatePulse()
+        {
+            var currentModel = PlayerPlugin.CurrentModel(playerIndex);
+
+            if (currentModel == null || !currentModel.values.ContainsKey("Pulse Active") || !(bool)currentModel.values["Pulse Active"])
+            {
+                return;
+            }
+
+            var player = playerObjects["RB Parent"].gameObject;
+
+            int s = Mathf.Clamp(((Vector2Int)currentModel.values["Pulse Shape"]).x, 0, ObjectManager.inst.objectPrefabs.Count - 1);
+            int so = Mathf.Clamp(((Vector2Int)currentModel.values["Pulse Shape"]).y, 0, ObjectManager.inst.objectPrefabs[s].options.Count - 1);
+
+            var objcopy = ObjectManager.inst.objectPrefabs[s].options[so];
+            if (s == 4 || s == 6)
+            {
+                objcopy = ObjectManager.inst.objectPrefabs[0].options[0];
+            }
+
+            var pulse = Instantiate(objcopy);
+            pulse.transform.SetParent(ObjectManager.inst.objectParent.transform);
+            pulse.transform.localScale = new Vector3(((Vector2)currentModel.values["Pulse Start Scale"]).x, ((Vector2)currentModel.values["Pulse Start Scale"]).y, 1f);
+            pulse.transform.position = player.transform.position;
+            pulse.transform.GetChild(0).localPosition = new Vector3(((Vector2)currentModel.values["Pulse Start Position"]).x, ((Vector2)currentModel.values["Pulse Start Position"]).y, (float)currentModel.values["Pulse Depth"]);
+            pulse.transform.GetChild(0).localRotation = Quaternion.Euler(new Vector3(0f, 0f, (float)currentModel.values["Pulse Start Rotation"]));
+
+            if ((bool)currentModel.values["Pulse Rotate to Head"])
+            {
+                pulse.transform.localRotation = player.transform.localRotation;
+            }
+
+            //Destroy
+            {
+                if (pulse.transform.GetChild(0).GetComponent<SelectObjectInEditor>())
+                {
+                    Destroy(pulse.transform.GetChild(0).GetComponent<SelectObjectInEditor>());
+                }
+                if (pulse.transform.GetChild(0).GetComponent<BoxCollider2D>())
+                {
+                    Destroy(pulse.transform.GetChild(0).GetComponent<BoxCollider2D>());
+                }
+                if (pulse.transform.GetChild(0).GetComponent<PolygonCollider2D>())
+                {
+                    Destroy(pulse.transform.GetChild(0).GetComponent<PolygonCollider2D>());
+                }
+                if (pulse.transform.GetChild(0).gameObject.GetComponentByName("RTObject"))
+                {
+                    Destroy(pulse.transform.GetChild(0).gameObject.GetComponentByName("RTObject"));
+                }
+            }
+
+            var obj = new PlayerObject("Pulse", pulse.transform.GetChild(0).gameObject);
+
+            MeshRenderer pulseRenderer = pulse.transform.GetChild(0).GetComponent<MeshRenderer>();
+            obj.values.Add("MeshRenderer", pulseRenderer);
+            obj.values.Add("Opacity", 0f);
+            obj.values.Add("ColorTween", 0f);
+            obj.values.Add("StartColor", (int)currentModel.values["Pulse Start Color"]);
+            obj.values.Add("EndColor", (int)currentModel.values["Pulse End Color"]);
+            obj.values.Add("StartCustomColor", (string)currentModel.values["Pulse Start Custom Color"]);
+            obj.values.Add("EndCustomColor", (string)currentModel.values["Pulse End Custom Color"]);
+
+            boosts.Add(obj);
+
+            pulseRenderer.enabled = true;
+            pulseRenderer.material = ((MeshRenderer)playerObjects["Head"].values["MeshRenderer"]).material;
+            pulseRenderer.material.shader = ((MeshRenderer)playerObjects["Head"].values["MeshRenderer"]).material.shader;
+            Color colorBase = ((MeshRenderer)playerObjects["Head"].values["MeshRenderer"]).material.color;
+
+            int easingPos = (int)currentModel.values["Pulse Easing Position"];
+            int easingSca = (int)currentModel.values["Pulse Easing Scale"];
+            int easingRot = (int)currentModel.values["Pulse Easing Rotation"];
+            int easingOpa = (int)currentModel.values["Pulse Easing Opacity"];
+            int easingCol = (int)currentModel.values["Pulse Easing Color"];
+
+            float duration = Mathf.Clamp((float)currentModel.values["Pulse Duration"], 0.001f, 20f) / PlayerExtensions.Pitch;
+
+            pulse.transform.GetChild(0).DOLocalMove(new Vector3(((Vector2)currentModel.values["Pulse End Position"]).x, ((Vector2)currentModel.values["Pulse End Position"]).y, (float)currentModel.values["Pulse Depth"]), duration).SetEase(DataManager.inst.AnimationList[easingPos].Animation);
+            var tweenScale = pulse.transform.DOScale(new Vector3(((Vector2)currentModel.values["Pulse End Scale"]).x, ((Vector2)currentModel.values["Pulse End Scale"]).y, 1f), duration).SetEase(DataManager.inst.AnimationList[easingSca].Animation);
+            pulse.transform.GetChild(0).DOLocalRotate(new Vector3(0f, 0f, (float)currentModel.values["Pulse End Rotation"]), duration).SetEase(DataManager.inst.AnimationList[easingRot].Animation);
+
+            DOTween.To(delegate (float x)
+            {
+                obj.values["Opacity"] = x;
+            }, (float)currentModel.values["Pulse Start Opacity"], (float)currentModel.values["Pulse End Opacity"], duration).SetEase(DataManager.inst.AnimationList[easingOpa].Animation);
+            DOTween.To(delegate (float x)
+            {
+                obj.values["ColorTween"] = x;
+            }, 0f, 1f, duration).SetEase(DataManager.inst.AnimationList[easingCol].Animation);
+
+            tweenScale.OnComplete(delegate ()
+            {
+                Destroy(pulse);
+                boosts.Remove(obj);
+            });
+        }
+
+        public void UpdateBoostTheme()
+        {
+            if (boosts.Count > 0)
+            {
+                foreach (var boost in boosts)
+                {
+                    if (boost != null)
+                    {
+                        int startCol = (int)boost.values["StartColor"];
+                        int endCol = (int)boost.values["EndColor"];
+
+                        var startHex = (string)boost.values["StartCustomColor"];
+                        var endHex = (string)boost.values["EndCustomColor"];
+
+                        float alpha = (float)boost.values["Opacity"];
+                        float colorTween = (float)boost.values["ColorTween"];
+
+                        Color startColor = GetColor(startCol, alpha, startHex);
+                        Color endColor = GetColor(endCol, alpha, endHex);
+
+                        if (((MeshRenderer)boost.values["MeshRenderer"]) != null)
+                        {
+                            ((MeshRenderer)boost.values["MeshRenderer"]).material.color = Color.Lerp(startColor, endColor, colorTween);
+                        }
+                    }
+                }
+            }
+        }
+
+        public List<PlayerObject> boosts = new List<PlayerObject>();
 
         public void InitBeforeBoost()
         {
@@ -772,6 +1442,7 @@ namespace CreativePlayers
         {
             var anim = (Animator)playerObjects["Base"].values["Animator"];
 
+            Debug.LogFormat("{0}Player Boost Cancel: {1} with offset: {2}", PlayerPlugin.className, playerIndex, _offset);
             isBoostCancelled = true;
             yield return new WaitForSeconds(_offset);
             isBoosting = false;
@@ -801,9 +1472,11 @@ namespace CreativePlayers
             yield break;
         }
 
+        //Look into making custom damage offsets
         public IEnumerator DamageSetDelay(float _offset)
         {
             yield return new WaitForSeconds(_offset);
+            Debug.LogFormat("{0}Player can now be damaged.", PlayerPlugin.className);
             CanTakeDamage = true;
             yield break;
         }
@@ -813,13 +1486,6 @@ namespace CreativePlayers
             isBoosting = false;
             isBoostCancelled = false;
             boostCoroutine = StartCoroutine(BoostCooldownLoop());
-
-            var currentModel = PlayerPlugin.playerModels[PlayerPlugin.playerModelsIndex[playerIndex]];
-            var headTrail = (TrailRenderer)playerObjects["Boost Trail"].values["TrailRenderer"];
-            if ((bool)currentModel.values["Head Trail Emitting"])
-            {
-                headTrail.emitting = false;
-            }
         }
 
         public void InitBeforeHit()
@@ -829,17 +1495,26 @@ namespace CreativePlayers
             isBoosting = false;
             isTakingHit = true;
             CanTakeDamage = false;
-            AudioManager.inst.PlaySound("HurtPlayer");
+            if (DataManager.inst.GetCurrentLanguage() == "pirate")
+            {
+                AudioManager.inst.PlaySound("pirate_KillPlayer");
+            }
+            else
+            {
+                AudioManager.inst.PlaySound("HurtPlayer");
+            }
         }
 
         public void InitAfterHit()
         {
+            Debug.LogFormat("{0}InitAfterHit: {1}", PlayerPlugin.className, playerIndex);
             isTakingHit = false;
             CanTakeDamage = true;
         }
 
         public void ResetMovement()
         {
+            Debug.LogFormat("{0}ResetMovement: {1}", PlayerPlugin.className, playerIndex);
             if (boostCoroutine != null)
             {
                 StopCoroutine(boostCoroutine);
@@ -858,6 +1533,7 @@ namespace CreativePlayers
         }
         public void PlayDeathParticles()
         {
+            Debug.LogFormat("{0}PlayDeathParticles: {1}", PlayerPlugin.className, playerIndex);
             if (playerObjects["Head"].gameObject.transform.Find("death-explosion").GetComponent<Animator>())
             {
                 playerObjects["Head"].gameObject.transform.Find("death-explosion").GetComponent<ParticleSystem>().Play();
@@ -866,6 +1542,7 @@ namespace CreativePlayers
 
         public void PlayHitParticles()
         {
+            Debug.LogFormat("{0}PlayHitParticles: {1}", PlayerPlugin.className, playerIndex);
             if (playerObjects["Head"].gameObject.transform.Find("burst-explosion").GetComponent<Animator>())
             {
                 playerObjects["Head"].gameObject.transform.Find("burst-explosion").GetComponent<ParticleSystem>().Play();
@@ -874,196 +1551,185 @@ namespace CreativePlayers
 
         public void SetColor(Color _col, Color _colTail)
         {
-            if (playerObjects["Head"].values["MeshRenderer"] != null)
-            {
-                ((MeshRenderer)playerObjects["Head"].values["MeshRenderer"]).material.color = _col;
-            }
-            //new Color(_col.r, _col.g, _col.b, 1f);
-            if (playerObjects["Head"].gameObject.transform.Find("burst-explosion").GetComponent<ParticleSystem>() != null)
-            {
-                var main = playerObjects["Head"].gameObject.transform.Find("burst-explosion").GetComponent<ParticleSystem>().main;
-                main.startColor = new ParticleSystem.MinMaxGradient(_col);
-            }
-            if (playerObjects["Head"].gameObject.transform.Find("death-explosion").GetComponent<ParticleSystem>() != null)
-            {
-                var main = playerObjects["Head"].gameObject.transform.Find("death-explosion").GetComponent<ParticleSystem>().main;
-                main.startColor = new ParticleSystem.MinMaxGradient(_col);
-            }
-            if (playerObjects["Head"].gameObject.transform.Find("spawn-implosion").GetComponent<ParticleSystem>() != null)
-            {
-                var main = playerObjects["Head"].gameObject.transform.Find("spawn-implosion").GetComponent<ParticleSystem>().main;
-                main.startColor = new ParticleSystem.MinMaxGradient(_col);
-            }
-            if (playerObjects["Boost"].values["MeshRenderer"] != null)
-            {
-                ((MeshRenderer)playerObjects["Boost"].values["MeshRenderer"]).material.color = _colTail;
-            }
-
-            var currentModel = PlayerPlugin.playerModels[PlayerPlugin.playerModelsIndex[playerIndex]];
+            var currentModel = PlayerPlugin.CurrentModel(playerIndex);
             if (currentModel != null)
             {
+                if (playerObjects.ContainsKey("Head") && playerObjects["Head"].values["MeshRenderer"] != null)
+                {
+                    int colStart = (int)currentModel.values["Head Color"];
+                    var colStartHex = (string)currentModel.values["Head Custom Color"];
+                    float alphaStart = (float)currentModel.values["Head Opacity"];
+
+                    ((MeshRenderer)playerObjects["Head"].values["MeshRenderer"]).material.color = GetColor(colStart, alphaStart, colStartHex);
+                }
+                //new Color(_col.r, _col.g, _col.b, 1f);
+                if (playerObjects.ContainsKey("Head") && playerObjects["Head"].gameObject.transform.Find("burst-explosion").GetComponent<ParticleSystem>() != null)
+                {
+                    int colStart = (int)currentModel.values["Head Color"];
+                    var colStartHex = (string)currentModel.values["Head Custom Color"];
+                    float alphaStart = (float)currentModel.values["Head Opacity"];
+
+                    var main = playerObjects["Head"].gameObject.transform.Find("burst-explosion").GetComponent<ParticleSystem>().main;
+                    main.startColor = new ParticleSystem.MinMaxGradient(GetColor(colStart, alphaStart, colStartHex));
+                }
+                if (playerObjects.ContainsKey("Head") && playerObjects["Head"].gameObject.transform.Find("death-explosion").GetComponent<ParticleSystem>() != null)
+                {
+                    var main = playerObjects["Head"].gameObject.transform.Find("death-explosion").GetComponent<ParticleSystem>().main;
+                    main.startColor = new ParticleSystem.MinMaxGradient(_col);
+                }
+                if (playerObjects.ContainsKey("Head") && playerObjects["Head"].gameObject.transform.Find("spawn-implosion").GetComponent<ParticleSystem>() != null)
+                {
+                    int colStart = (int)currentModel.values["Head Color"];
+                    var colStartHex = (string)currentModel.values["Head Custom Color"];
+                    float alphaStart = (float)currentModel.values["Head Opacity"];
+
+                    var main = playerObjects["Head"].gameObject.transform.Find("spawn-implosion").GetComponent<ParticleSystem>().main;
+                    main.startColor = new ParticleSystem.MinMaxGradient(GetColor(colStart, alphaStart, colStartHex));
+                }
+                if (playerObjects.ContainsKey("Boost") && playerObjects["Boost"].values["MeshRenderer"] != null)
+                {
+                    int colStart = (int)currentModel.values["Boost Color"];
+                    var colStartHex = (string)currentModel.values["Boost Custom Color"];
+                    float alphaStart = (float)currentModel.values["Boost Opacity"];
+
+                    ((MeshRenderer)playerObjects["Boost"].values["MeshRenderer"]).material.color = GetColor(colStart, alphaStart, colStartHex);
+                }
+
+                if (playerObjects.ContainsKey("Boost Tail") && playerObjects["Boost Tail"].values["MeshRenderer"] != null)
+                {
+                    int colStart = (int)currentModel.values["Tail Boost Color"];
+                    var colStartHex = (string)currentModel.values["Tail Boost Custom Color"];
+                    float alphaStart = (float)currentModel.values["Tail Boost Opacity"];
+
+                    ((MeshRenderer)playerObjects["Boost Tail"].values["MeshRenderer"]).material.color = GetColor(colStart, alphaStart, colStartHex);
+                }
+
+                //GUI Bar
+                {
+                    int baseCol = (int)currentModel.values["GUI Health Base Color"];
+                    int topCol = (int)currentModel.values["GUI Health Top Color"];
+                    string baseColHex = (string)currentModel.values["GUI Health Base Custom Color"];
+                    string topColHex = (string)currentModel.values["GUI Health Top Custom Color"];
+                    float baseAlpha = (float)currentModel.values["GUI Health Base Opacity"];
+                    float topAlpha = (float)currentModel.values["GUI Health Top Opacity"];
+
+                    for (int i = 0; i < healthObjects.Count; i++)
+                    {
+                        if (healthObjects[i].image != null)
+                        {
+                            healthObjects[i].image.color = GetColor(topCol, topAlpha, topColHex);
+                        }
+                    }
+
+                    barBaseIm.color = GetColor(baseCol, baseAlpha, baseColHex);
+                    barIm.color = GetColor(topCol, topAlpha, topColHex);
+                }
+
                 for (int i = 1; i < 4; i++)
                 {
                     int colStart = (int)currentModel.values[string.Format("Tail {0} Trail Start Color", i)];
+                    var colStartHex = (string)currentModel.values[string.Format("Tail {0} Trail Start Custom Color", i)];
                     float alphaStart = (float)currentModel.values[string.Format("Tail {0} Trail Start Opacity", i)];
                     int colEnd = (int)currentModel.values[string.Format("Tail {0} Trail End Color", i)];
+                    var colEndHex = (string)currentModel.values[string.Format("Tail {0} Trail End Custom Color", i)];
                     float alphaEnd = (float)currentModel.values[string.Format("Tail {0} Trail End Opacity", i)];
+
+                    var psCol = (int)currentModel.values[string.Format("Tail {0} Particles Color", i)];
+                    var psColHex = (string)currentModel.values[string.Format("Tail {0} Particles Custom Color", i)];
 
                     ((MeshRenderer)playerObjects[string.Format("Tail {0}", i)].values["MeshRenderer"]).material.color = _colTail;
 
                     var trailRenderer = (TrailRenderer)playerObjects[string.Format("Tail {0}", i)].values["TrailRenderer"];
-                    if (colStart < 4)
-                    {
-                        trailRenderer.startColor = LSColors.fadeColor(GameManager.inst.LiveTheme.playerColors[colStart], alphaStart);
-                    }
-                    if (colEnd < 4)
-                    {
-                        trailRenderer.endColor = LSColors.fadeColor(GameManager.inst.LiveTheme.playerColors[colEnd], alphaEnd);
-                    }
-                    if (colStart == 4)
-                    {
-                        trailRenderer.startColor = LSColors.fadeColor(GameManager.inst.LiveTheme.guiColor, alphaStart);
-                    }
-                    if (colEnd == 4)
-                    {
-                        trailRenderer.endColor = LSColors.fadeColor(GameManager.inst.LiveTheme.guiColor, alphaEnd);
-                    }
-                    if (colStart > 4)
-                    {
-                        trailRenderer.startColor = LSColors.fadeColor(GameManager.inst.LiveTheme.objectColors[colStart - 5], alphaStart);
-                    }
-                    if (colEnd > 4)
-                    {
-                        trailRenderer.startColor = LSColors.fadeColor(GameManager.inst.LiveTheme.objectColors[colStart - 5], alphaEnd);
-                    }
+
+                    trailRenderer.startColor = GetColor(colStart, alphaStart, colStartHex);
+                    trailRenderer.endColor = GetColor(colEnd, alphaEnd, colEndHex);
                 }
 
                 if (playerObjects["Head Trail"].values["TrailRenderer"] != null && (bool)currentModel.values["Head Trail Emitting"])
                 {
                     int colStart = (int)currentModel.values["Head Trail Start Color"];
+                    var colStartHex = (string)currentModel.values["Head Trail Start Custom Color"];
                     float alphaStart = (float)currentModel.values["Head Trail Start Opacity"];
                     int colEnd = (int)currentModel.values["Head Trail End Color"];
+                    var colEndHex = (string)currentModel.values["Head Trail End Custom Color"];
                     float alphaEnd = (float)currentModel.values["Head Trail End Opacity"];
 
-                    if (colStart < 4)
-                    {
-                        ((TrailRenderer)playerObjects["Head Trail"].values["TrailRenderer"]).startColor = LSColors.fadeColor(GameManager.inst.LiveTheme.playerColors[colStart], alphaStart);
-                    }
-                    if (colEnd < 4)
-                    {
-                        ((TrailRenderer)playerObjects["Head Trail"].values["TrailRenderer"]).endColor = LSColors.fadeColor(GameManager.inst.LiveTheme.playerColors[colEnd], alphaEnd);
-                    }
-                    if (colStart == 4)
-                    {
-                        ((TrailRenderer)playerObjects["Head Trail"].values["TrailRenderer"]).startColor = LSColors.fadeColor(GameManager.inst.LiveTheme.guiColor, alphaStart);
-                    }
-                    if (colEnd == 4)
-                    {
-                        ((TrailRenderer)playerObjects["Head Trail"].values["TrailRenderer"]).endColor = LSColors.fadeColor(GameManager.inst.LiveTheme.guiColor, alphaEnd);
-                    }
-                    if (colStart > 4)
-                    {
-                        ((TrailRenderer)playerObjects["Head Trail"].values["TrailRenderer"]).startColor = LSColors.fadeColor(GameManager.inst.LiveTheme.objectColors[colStart - 5], alphaStart);
-                    }
-                    if (colEnd > 4)
-                    {
-                        ((TrailRenderer)playerObjects["Head Trail"].values["TrailRenderer"]).endColor = LSColors.fadeColor(GameManager.inst.LiveTheme.objectColors[colEnd - 5], alphaEnd);
-                    }
+                    var trailRenderer = (TrailRenderer)playerObjects["Head Trail"].values["TrailRenderer"];
+
+                    trailRenderer.startColor = GetColor(colStart, alphaStart, colStartHex);
+                    trailRenderer.endColor = GetColor(colEnd, alphaEnd, colEndHex);
                 }
                 if (playerObjects["Head Particles"].values["ParticleSystem"] != null && (bool)currentModel.values["Head Particles Emitting"])
                 {
-                    int colStart = (int)currentModel.values["Head Particles Color"];
+                    var colStart = (int)currentModel.values["Head Particles Color"];
+                    var colStartHex = (string)currentModel.values["Head Particles Custom Color"];
 
                     var ps = (ParticleSystem)playerObjects["Head Particles"].values["ParticleSystem"];
                     var main = ps.main;
 
-                    if (colStart < 4)
-                    {
-                        main.startColor = GameManager.inst.LiveTheme.playerColors[colStart];
-                        //psCol.gradient.colorKeys[0].color = GameManager.inst.LiveTheme.playerColors[colStart];
-                    }
-                    //if (colEnd < 4)
-                    //{
-                    //psCol.gradient.colorKeys[1].color = GameManager.inst.LiveTheme.playerColors[colEnd];
-                    //}
-                    if (colStart == 4)
-                    {
-                        main.startColor = GameManager.inst.LiveTheme.guiColor;
-                        //psCol.gradient.colorKeys[0].color = GameManager.inst.LiveTheme.guiColor;
-                    }
-                    //if (colEnd == 4)
-                    //{
-                    //psCol.gradient.colorKeys[1].color = GameManager.inst.LiveTheme.guiColor;
-                    //}
-                    if (colStart > 4)
-                    {
-                        main.startColor = GameManager.inst.LiveTheme.objectColors[colStart - 5];
-                        //psCol.gradient.colorKeys[0].color = GameManager.inst.LiveTheme.objectColors[colStart - 5];
-                    }
-                    //if (colEnd > 4)
-                    //{
-                    //psCol.gradient.colorKeys[1].color = GameManager.inst.LiveTheme.objectColors[colEnd - 5];
-                    //}
+                    main.startColor = GetColor(colStart, colStartHex);
                 }
                 if (playerObjects["Boost Trail"].values["TrailRenderer"] != null && (bool)currentModel.values["Boost Trail Emitting"])
                 {
-                    int colStart = (int)currentModel.values["Boost Trail Start Color"];
-                    float alphaStart = (float)currentModel.values["Boost Trail Start Opacity"];
-                    int colEnd = (int)currentModel.values["Boost Trail End Color"];
-                    float alphaEnd = (float)currentModel.values["Boost Trail End Opacity"];
+                    var colStart = (int)currentModel.values["Boost Trail Start Color"];
+                    var colStartHex = (string)currentModel.values["Boost Trail Start Custom Color"];
+                    var alphaStart = (float)currentModel.values["Boost Trail Start Opacity"];
+                    var colEnd = (int)currentModel.values["Boost Trail End Color"];
+                    var colEndHex = (string)currentModel.values["Boost Trail End Custom Color"];
+                    var alphaEnd = (float)currentModel.values["Boost Trail End Opacity"];
 
-                    if (colStart < 4)
-                    {
-                        ((TrailRenderer)playerObjects["Boost Trail"].values["TrailRenderer"]).startColor = LSColors.fadeColor(GameManager.inst.LiveTheme.playerColors[colStart], alphaStart);
-                    }
-                    if (colEnd < 4)
-                    {
-                        ((TrailRenderer)playerObjects["Boost Trail"].values["TrailRenderer"]).endColor = LSColors.fadeColor(GameManager.inst.LiveTheme.playerColors[colEnd], alphaEnd);
-                    }
-                    if (colStart == 4)
-                    {
-                        ((TrailRenderer)playerObjects["Boost Trail"].values["TrailRenderer"]).startColor = LSColors.fadeColor(GameManager.inst.LiveTheme.guiColor, alphaStart);
-                    }
-                    if (colEnd == 4)
-                    {
-                        ((TrailRenderer)playerObjects["Boost Trail"].values["TrailRenderer"]).endColor = LSColors.fadeColor(GameManager.inst.LiveTheme.guiColor, alphaEnd);
-                    }
-                    if (colStart > 4)
-                    {
-                        ((TrailRenderer)playerObjects["Boost Trail"].values["TrailRenderer"]).startColor = LSColors.fadeColor(GameManager.inst.LiveTheme.objectColors[colStart - 5], alphaStart);
-                    }
-                    if (colEnd > 4)
-                    {
-                        ((TrailRenderer)playerObjects["Boost Trail"].values["TrailRenderer"]).endColor = LSColors.fadeColor(GameManager.inst.LiveTheme.objectColors[colEnd - 5], alphaEnd);
-                    }
+                    var trailRenderer = (TrailRenderer)playerObjects["Boost Trail"].values["TrailRenderer"];
+
+                    trailRenderer.startColor = GetColor(colStart, alphaStart, colStartHex);
+                    trailRenderer.endColor = GetColor(colEnd, alphaEnd, colEndHex);
                 }
                 if (playerObjects["Boost Particles"].values["ParticleSystem"] != null && (bool)currentModel.values["Boost Particles Emitting"])
                 {
-                    int colStart = (int)currentModel.values["Boost Particles Color"];
+                    var colStart = (int)currentModel.values["Boost Particles Color"];
+                    var colHex = (string)currentModel.values["Boost Particles Custom Color"];
 
                     var ps = (ParticleSystem)playerObjects["Boost Particles"].values["ParticleSystem"];
                     var main = ps.main;
 
-                    if (colStart < 4)
-                    {
-                        main.startColor = GameManager.inst.LiveTheme.playerColors[colStart];
-                    }
-                    if (colStart == 4)
-                    {
-                        main.startColor = GameManager.inst.LiveTheme.guiColor;
-                    }
-                    if (colStart > 4)
-                    {
-                        main.startColor = GameManager.inst.LiveTheme.objectColors[colStart - 5];
-                    }
+                    main.startColor = GetColor(colStart, colHex);
                 }
             }
         }
 
+        #endregion
+
+        #region Update Values
+
         public void updatePlayer()
         {
-            var currentModel = PlayerPlugin.playerModels[PlayerPlugin.playerModelsIndex[playerIndex]];
+            var currentModel = PlayerPlugin.CurrentModel(playerIndex);
             var rb = (Rigidbody2D)playerObjects["RB Parent"].values["Rigidbody2D"];
+
+            //NameTag
+            {
+                Destroy(canvas);
+
+                canvas = PlayerExtensions.CreateCanvas("Name Tag Canvas " + (playerIndex + 1).ToString());
+                canvas.transform.SetParent(transform);
+
+                GameObject e = new GameObject("Base");
+                e.transform.SetParent(canvas.transform);
+                var image = PlayerExtensions.GenerateUIImage("Image", e.transform);
+                var text = PlayerExtensions.GenerateUIText("Text", ((GameObject)image["GameObject"]).transform);
+
+                PlayerExtensions.SetRectTransform((RectTransform)image["RectTransform"], new Vector2(960f, 585f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(166f, 44f));
+                var component = (Text)text["Text"];
+                component.text = "Player " + (playerIndex + 1).ToString() + "[===]";
+                component.alignment = TextAnchor.MiddleCenter;
+
+                ((RectTransform)text["RectTransform"]).sizeDelta = new Vector2(200f, 100f);
+
+                playerObjects.Add("NameTag Text", new PlayerObject("NameTag Text", (GameObject)text["GameObject"]));
+                playerObjects.Add("NameTag Image", new PlayerObject("NameTag Image", (GameObject)image["GameObject"]));
+
+                playerObjects["NameTag Text"].values.Add("Text", component);
+                playerObjects["NameTag Image"].values.Add("Image", (Image)image["Image"]);
+            }
 
             //Set new transform values
             if (currentModel != null)
@@ -1081,6 +1747,7 @@ namespace CreativePlayers
                     else
                         ((MeshFilter)playerObjects["Head"].values["MeshFilter"]).mesh = ObjectManager.inst.objectPrefabs[0].options[0].GetComponentInChildren<MeshFilter>().mesh;
                 }
+
                 //Boost Shape
                 {
                     int s = ((Vector2Int)currentModel.values["Boost Shape"]).x;
@@ -1094,6 +1761,21 @@ namespace CreativePlayers
                     else
                         ((MeshFilter)playerObjects["Boost"].values["MeshFilter"]).mesh = ObjectManager.inst.objectPrefabs[0].options[0].GetComponentInChildren<MeshFilter>().mesh;
                 }
+
+                //Tail Boost Shape
+                {
+                    int s = ((Vector2Int)currentModel.values["Tail Boost Shape"]).x;
+                    int so = ((Vector2Int)currentModel.values["Tail Boost Shape"]).y;
+
+                    s = Mathf.Clamp(s, 0, ObjectManager.inst.objectPrefabs.Count - 1);
+                    so = Mathf.Clamp(so, 0, ObjectManager.inst.objectPrefabs[s].options.Count - 1);
+
+                    if (s != 4 && s != 6)
+                        ((MeshFilter)playerObjects["Boost Tail"].values["MeshFilter"]).mesh = ObjectManager.inst.objectPrefabs[s].options[so].GetComponentInChildren<MeshFilter>().mesh;
+                    else
+                        ((MeshFilter)playerObjects["Boost Tail"].values["MeshFilter"]).mesh = ObjectManager.inst.objectPrefabs[0].options[0].GetComponentInChildren<MeshFilter>().mesh;
+                }
+
                 //Tail 1 Shape
                 for (int i = 1; i < 4; i++)
                 {
@@ -1126,19 +1808,77 @@ namespace CreativePlayers
                 Debug.LogFormat("{0}Rendering Boost\nPos: {1}\nSca: {2}\nRot: {3}", PlayerPlugin.className, b1, b2, b3);
 
                 ((MeshRenderer)playerObjects["Boost"].values["MeshRenderer"]).enabled = (bool)currentModel.values["Boost Active"];
-                playerObjects["Boost Base"].gameObject.transform.localPosition = new Vector3(b1.x, b1.y, 1f);
+                playerObjects["Boost Base"].gameObject.transform.localPosition = new Vector3(b1.x, b1.y, 0.1f);
                 playerObjects["Boost Base"].gameObject.transform.localScale = new Vector3(b2.x, b2.y, 1f);
                 playerObjects["Boost Base"].gameObject.transform.localEulerAngles = new Vector3(0f, 0f, b3);
 
                 tailDistance = (float)currentModel.values["Tail Base Distance"];
                 tailMode = (int)currentModel.values["Tail Base Mode"];
 
+                tailGrows = (bool)currentModel.values["Tail Base Grows"];
+
+                boostTail = (bool)currentModel.values["Tail Boost Active"];
+
+                playerObjects["Boost Tail Base"].gameObject.SetActive(boostTail);
+
+                var fp = (Vector2)currentModel.values["Face Position"];
+                playerObjects["Face Parent"].gameObject.transform.localPosition = new Vector3(fp.x, fp.y, 0f);
+
+                if (!isBoosting)
+                {
+                    path[1].active = boostTail;
+                }
+
+                //Stretch
+                {
+                    stretch = (bool)currentModel.values["Stretch Active"];
+                    stretchAmount = (float)currentModel.values["Stretch Amount"];
+                    stretchEasing = (int)currentModel.values["Stretch Easing"];
+                }
+
+                var bt1 = (Vector2)currentModel.values["Tail Boost Position"];
+                var bt2 = (Vector2)currentModel.values["Tail Boost Scale"];
+                var bt3 = (float)currentModel.values["Tail Boost Rotation"];
+
+                playerObjects["Boost Tail"].gameObject.SetActive(boostTail);
+                if (boostTail)
+                {
+                    playerObjects["Boost Tail"].gameObject.transform.localPosition = new Vector3(bt1.x, bt1.y, 0.1f);
+                    playerObjects["Boost Tail"].gameObject.transform.localScale = new Vector3(bt2.x, bt2.y, 1f);
+                    playerObjects["Boost Tail"].gameObject.transform.localEulerAngles = new Vector3(0f, 0f, bt3);
+                }
+
+                rotateMode = (RotateMode)(int)currentModel.values["Base Rotate Mode"];
+
+                updateMode = PlayerPlugin.TailUpdateMode.Value;
+
+                ((CircleCollider2D)playerObjects["RB Parent"].values["CircleCollider2D"]).isTrigger = EditorManager.inst != null && PlayerPlugin.ZenEditorIncludesSolid.Value && PlayerPlugin.ZenModeInEditor.Value;
+                ((PolygonCollider2D)playerObjects["RB Parent"].values["PolygonCollider2D"]).isTrigger = EditorManager.inst != null && PlayerPlugin.ZenEditorIncludesSolid.Value && PlayerPlugin.ZenModeInEditor.Value;
+
+                var colAcc = (bool)currentModel.values["Base Collision Accurate"];
+                if (colAcc)
+                {
+                    ((CircleCollider2D)playerObjects["RB Parent"].values["CircleCollider2D"]).enabled = false;
+                    ((PolygonCollider2D)playerObjects["RB Parent"].values["PolygonCollider2D"]).enabled = true;
+                    ((PolygonCollider2D)playerObjects["RB Parent"].values["PolygonCollider2D"]).CreateCollider((MeshFilter)playerObjects["Head"].values["MeshFilter"]);
+                }
+                else
+                {
+                    ((PolygonCollider2D)playerObjects["RB Parent"].values["PolygonCollider2D"]).enabled = false;
+                    ((CircleCollider2D)playerObjects["RB Parent"].values["CircleCollider2D"]).enabled = true;
+                }
+
                 for (int i = 1; i < 4; i++)
                 {
+                    //int num = i;
+                    //if (boostTail)
+                    //{
+                    //    num += 1;
+                    //}
 
-                    var delayTracker = (DelayTracker)playerObjects[string.Format("Tail {0} Base", i)].values["DelayTracker"];
-                    delayTracker.offset = -i * tailDistance / 2f;
-                    delayTracker.followSharpness = 0.1f * (-i + 4);
+                    //var delayTracker = (DelayTracker)playerObjects[string.Format("Tail {0} Base", i)].values["DelayTracker"];
+                    //delayTracker.offset = -num * tailDistance / 2f;
+                    //delayTracker.followSharpness = 0.1f * (-num + 4);
 
                     var t1 = (Vector2)currentModel.values[string.Format("Tail {0} Position", i)];
                     var t2 = (Vector2)currentModel.values[string.Format("Tail {0} Scale", i)];
@@ -1156,13 +1896,38 @@ namespace CreativePlayers
                 {
                     if (EditorManager.inst == null && DataManager.inst.GetSettingEnum("ArcadeDifficulty", 0) == 3)
                     {
-                        InputDataManager.inst.players[playerIndex].health = 1;
-                        UpdateTail(InputDataManager.inst.players[playerIndex].health, rb.position);
+                        CustomPlayer.health = 1;
                     }
                     else
                     {
-                        InputDataManager.inst.players[playerIndex].health = (int)currentModel.values["Base Health"];
-                        UpdateTail(InputDataManager.inst.players[playerIndex].health, rb.position);
+                        CustomPlayer.health = (int)currentModel.values["Base Health"];
+                    }
+
+                    UpdateTail(CustomPlayer.health, rb.position);
+                    initialHealthCount = CustomPlayer.health;
+                }
+
+                //Health Images
+                {
+                    if (RTFile.FileExists(RTFile.ApplicationDirectory + RTFile.basePath + "health.png"))
+                    {
+                        Debug.LogFormat("{0}Updating Health GUI", PlayerPlugin.className);
+
+                        foreach (var health in healthObjects)
+                        {
+                            if (SpriteManager.inst != null && health.image != null)
+                                SpriteManager.GetSprite(RTFile.ApplicationDirectory + RTFile.basePath + "health.png", health.image);
+                        }
+                    }
+                    else
+                    {
+                        Debug.LogFormat("{0}Updating Health GUI without image", PlayerPlugin.className);
+
+                        foreach (var health in healthObjects)
+                        {
+                            if (health.image != null && PlayerPlugin.healthSprite != null)
+                                health.image.sprite = PlayerPlugin.healthSprite;
+                        }
                     }
                 }
 
@@ -1257,15 +2022,6 @@ namespace CreativePlayers
 
                     ssss.curve = curve;
 
-                    //ssss.curve.keys[0].value = sizeStart;
-                    //ssss.curve.keys[1].value = sizeEnd;
-
-                    //ssss.mode = ParticleSystemCurveMode.Constant;
-                    //ssss.mode = ParticleSystemCurveMode.Curve;
-
-                    Debug.LogFormat("{0}Key 0 Value: {1}\nSupposed to be: {2}", PlayerPlugin.className, ssss.curve.keys[0].value, sizeStart);
-                    Debug.LogFormat("{0}Key 1 Value: {1}\nSupposed to be: {2}", PlayerPlugin.className, ssss.curve.keys[1].value, sizeEnd);
-
                     sizeOverLifetime.size = ssss;
                 }
 
@@ -1359,9 +2115,6 @@ namespace CreativePlayers
 
                     ssss.curve = curve;
 
-                    Debug.LogFormat("{0}Key 0 Value: {1}\nSupposed to be: {2}", PlayerPlugin.className, ssss.curve.keys[0].value, sizeStart);
-                    Debug.LogFormat("{0}Key 1 Value: {1}\nSupposed to be: {2}", PlayerPlugin.className, ssss.curve.keys[1].value, sizeEnd);
-
                     sizeOverLifetime.size = ssss;
                 }
 
@@ -1454,9 +2207,6 @@ namespace CreativePlayers
 
                         ssss.curve = curve;
 
-                        Debug.LogFormat("{0}Key 0 Value: {1}\nSupposed to be: {2}", PlayerPlugin.className, ssss.curve.keys[0].value, sizeStart);
-                        Debug.LogFormat("{0}Key 1 Value: {1}\nSupposed to be: {2}", PlayerPlugin.className, ssss.curve.keys[1].value, sizeEnd);
-
                         sizeOverLifetime.size = ssss;
                     }
                 }
@@ -1467,7 +2217,7 @@ namespace CreativePlayers
 
         public void updateParticlesCurvesBecauseTheySuck()
         {
-            var currentModel = PlayerPlugin.playerModels[PlayerPlugin.playerModelsIndex[playerIndex]];
+            var currentModel = PlayerPlugin.CurrentModel(playerIndex);
             //Head
             {
                 var headParticles = (ParticleSystem)playerObjects["Head Particles"].values["ParticleSystem"];
@@ -1628,17 +2378,6 @@ namespace CreativePlayers
             {
                 foreach (var obj in customObjects)
                 {
-                    if (obj.Value.gameObject != null && id == "")
-                        Destroy(obj.Value.gameObject);
-
-                    if (obj.Value.gameObject != null && id != "" && obj.Key == id)
-                    {
-                        Destroy(obj.Value.gameObject);
-                    }
-                }
-
-                foreach (var obj in customObjects)
-                {
                     if (id != "" && obj.Key == id || id == "")
                     {
                         var customObj = obj.Value;
@@ -1656,39 +2395,60 @@ namespace CreativePlayers
                             int so = Mathf.Clamp(shape.y, 0, ObjectManager.inst.objectPrefabs[s].options.Count - 1);
 
                             customObj.gameObject = Instantiate(ObjectManager.inst.objectPrefabs[s].options[so]);
+                            customObj.gameObject.transform.SetParent(transform);
+                            customObj.gameObject.transform.localScale = Vector3.one;
 
+                            var delayTracker = customObj.gameObject.AddComponent<DelayTracker>();
+                            delayTracker.offset = 0;
+                            delayTracker.positionOffset = (float)customObj.values["Parent Position Offset"];
+                            delayTracker.scaleOffset = (float)customObj.values["Parent Scale Offset"];
+                            delayTracker.rotationOffset = (float)customObj.values["Parent Rotation Offset"];
+                            delayTracker.scaleParent = (bool)customObj.values["Parent Scale Active"];
+                            delayTracker.rotationParent = (bool)customObj.values["Parent Rotation Active"];
+                            delayTracker.player = this;
+                            
                             switch ((int)customObj.values["Parent"])
                             {
                                 case 0:
                                     {
-                                        customObj.gameObject.transform.SetParent(playerObjects["RB Parent"].gameObject.transform);
+                                        delayTracker.leader = playerObjects["RB Parent"].gameObject.transform;
                                         break;
                                     }
                                 case 1:
                                     {
-                                        customObj.gameObject.transform.SetParent(playerObjects["Boost Base"].gameObject.transform);
+                                        delayTracker.leader = playerObjects["Boost Base"].gameObject.transform;
                                         break;
                                     }
                                 case 2:
                                     {
-                                        customObj.gameObject.transform.SetParent(playerObjects["Tail 1 Base"].gameObject.transform);
+                                        delayTracker.leader = playerObjects["Boost Tail Base"].gameObject.transform;
                                         break;
                                     }
                                 case 3:
                                     {
-                                        customObj.gameObject.transform.SetParent(playerObjects["Tail 2 Base"].gameObject.transform);
+                                        delayTracker.leader = playerObjects["Tail 1 Base"].gameObject.transform;
                                         break;
                                     }
                                 case 4:
                                     {
-                                        customObj.gameObject.transform.SetParent(playerObjects["Tail 3 Base"].gameObject.transform);
+                                        delayTracker.leader = playerObjects["Tail 2 Base"].gameObject.transform;
+                                        break;
+                                    }
+                                case 5:
+                                    {
+                                        delayTracker.leader = playerObjects["Tail 3 Base"].gameObject.transform;
+                                        break;
+                                    }
+                                case 6:
+                                    {
+                                        delayTracker.leader = playerObjects["Face Parent"].gameObject.transform;
                                         break;
                                     }
                             }
 
-                            customObj.gameObject.transform.localPosition = new Vector3(pos.x, pos.y, depth);
-                            customObj.gameObject.transform.localScale = new Vector3(sca.x, sca.y, 1f);
-                            customObj.gameObject.transform.localEulerAngles = new Vector3(0f, 0f, rot);
+                            customObj.gameObject.transform.GetChild(0).localPosition = new Vector3(pos.x, pos.y, depth);
+                            customObj.gameObject.transform.GetChild(0).localScale = new Vector3(sca.x, sca.y, 1f);
+                            customObj.gameObject.transform.GetChild(0).localEulerAngles = new Vector3(0f, 0f, rot);
 
                             customObj.gameObject.tag = "Helper";
                             customObj.gameObject.transform.GetChild(0).tag = "Helper";
@@ -1700,11 +2460,21 @@ namespace CreativePlayers
             }
         }
 
-        public void CreateAll(bool _update = true)
+        public void CreateAll()
         {
-            var currentModel = PlayerPlugin.playerModels[PlayerPlugin.playerModelsIndex[playerIndex]];
+            var currentModel = PlayerPlugin.CurrentModel(playerIndex);
 
             Dictionary<string, object> dictionary = (Dictionary<string, object>)currentModel.values["Custom Objects"];
+
+            foreach (var obj in customObjects)
+            {
+                if (obj.Value.gameObject != null)
+                {
+                    Debug.LogFormat("{0}Destroying Custom Object! {1}", PlayerPlugin.className, obj.Key);
+                    Destroy(obj.Value.gameObject);
+                }
+            }
+
             customObjects.Clear();
             if (dictionary != null && dictionary.Count > 0)
                 foreach (var obj in dictionary)
@@ -1719,15 +2489,23 @@ namespace CreativePlayers
                     c.values["Scale"] = customObj["Scale"];
                     c.values["Rotation"] = customObj["Rotation"];
                     c.values["Color"] = customObj["Color"];
+                    c.values["Custom Color"] = customObj["Custom Color"];
                     c.values["Opacity"] = customObj["Opacity"];
                     c.values["Parent"] = customObj["Parent"];
+                    c.values["Parent Position Offset"] = customObj["Parent Position Offset"];
+                    c.values["Parent Scale Offset"] = customObj["Parent Scale Offset"];
+                    c.values["Parent Rotation Offset"] = customObj["Parent Rotation Offset"];
+                    c.values["Parent Scale Active"] = customObj["Parent Scale Active"];
+                    c.values["Parent Rotation Active"] = customObj["Parent Rotation Active"];
                     c.values["Depth"] = customObj["Depth"];
+                    c.values["Visibility"] = customObj["Visibility"];
+                    c.values["Visibility Value"] = customObj["Visibility Value"];
+                    c.values["Visibility Not"] = customObj["Visibility Not"];
 
                     customObjects.Add((string)customObj["ID"], c);
                 }
 
-            if (_update)
-                updateCustomObjects();
+            updateCustomObjects();
         }
 
         public PlayerObject CreateCustomObject()
@@ -1743,10 +2521,19 @@ namespace CreativePlayers
             obj.values.Add("Scale", new Vector2(1f, 1f));
             obj.values.Add("Rotation", 0f);
             obj.values.Add("Color", 0);
+            obj.values.Add("Custom Color", "FFFFFF");
             obj.values.Add("Opacity", 0f);
             obj.values.Add("Parent", 0);
+            obj.values.Add("Parent Position Offset", 1f);
+            obj.values.Add("Parent Scale Offset", 1f);
+            obj.values.Add("Parent Rotation Offset", 1f);
+            obj.values.Add("Parent Scale Active", false);
+            obj.values.Add("Parent Rotation Active", true);
             obj.values.Add("Depth", 0f);
             obj.values.Add("MeshRenderer", null);
+            obj.values.Add("Visibility", 0);
+            obj.values.Add("Visibility Value", 100f);
+            obj.values.Add("Visibility Not", false);
             var id = LSText.randomNumString(16);
             obj.values.Add("ID", id);
 
@@ -1755,30 +2542,98 @@ namespace CreativePlayers
             return obj;
         }
 
-        public void CreateBoostEffect()
-        {
-            var gm = Instantiate(ObjectManager.inst.objectPrefabs[0].options[0]);
-
-            var obj = new PlayerObject();
-
-            gm.transform.DOScale(2f, 1f).SetEase(DataManager.inst.AnimationList[2].Animation);
-        }
-
         public void UpdateCustomTheme()
         {
             if (customObjects.Count > 0)
                 foreach (var obj in customObjects.Values)
                 {
-                    int col = (int)obj.values["Color"];
-                    float alpha = (float)obj.values["Opacity"];
-                    if (((MeshRenderer)obj.values["MeshRenderer"]) != null)
+                    int vis = (int)obj.values["Visibility"];
+                    bool not = (bool)obj.values["Visibility Not"];
+                    float value = (float)obj.values["Visibility Value"];
+                    if (obj.gameObject != null)
                     {
-                        if (col < 4)
-                            ((MeshRenderer)obj.values["MeshRenderer"]).material.color = LSColors.fadeColor(GameManager.inst.LiveTheme.playerColors[col], alpha);
-                        if (col == 4)
-                            ((MeshRenderer)obj.values["MeshRenderer"]).material.color = LSColors.fadeColor(GameManager.inst.LiveTheme.guiColor, alpha);
-                        if (col > 4)
-                            ((MeshRenderer)obj.values["MeshRenderer"]).material.color = LSColors.fadeColor(GameManager.inst.LiveTheme.objectColors[col - 5], alpha);
+                        switch (vis)
+                        {
+                            case 0:
+                                {
+                                    obj.gameObject.SetActive(true);
+                                    break;
+                                }
+                            case 1:
+                                {
+                                    if (!not)
+                                        obj.gameObject.SetActive(isBoosting);
+                                    else
+                                        obj.gameObject.SetActive(!isBoosting);
+                                    break;
+                                }
+                            case 2:
+                                {
+                                    if (!not)
+                                        obj.gameObject.SetActive(isTakingHit);
+                                    else
+                                        obj.gameObject.SetActive(!isTakingHit);
+                                    break;
+                                }
+                            case 3:
+                                {
+                                    bool zen = DataManager.inst.GetSettingEnum("ArcadeDifficulty", 1) == 0 && (EditorManager.inst == null || PlayerPlugin.ZenModeInEditor.Value);
+                                    if (!not)
+                                        obj.gameObject.SetActive(zen);
+                                    else
+                                        obj.gameObject.SetActive(!zen);
+                                    break;
+                                }
+                            case 4:
+                                {
+                                    if (!not)
+                                        obj.gameObject.SetActive((float)CustomPlayer.health / (float)initialHealthCount * 100f >= value);
+                                    else
+                                        obj.gameObject.SetActive(!((float)CustomPlayer.health / (float)initialHealthCount * 100f >= value));
+                                    break;
+                                }
+                            case 5:
+                                {
+                                    if (!not)
+                                        obj.gameObject.SetActive(CustomPlayer.health >= value);
+                                    else
+                                        obj.gameObject.SetActive(!(CustomPlayer.health >= value));
+                                    break;
+                                }
+                            case 6:
+                                {
+                                    if (!not)
+                                        obj.gameObject.SetActive(CustomPlayer.health == value);
+                                    else
+                                        obj.gameObject.SetActive(!(CustomPlayer.health == value));
+                                    break;
+                                }
+                            case 7:
+                                {
+                                    if (!not)
+                                        obj.gameObject.SetActive(CustomPlayer.health > value);
+                                    else
+                                        obj.gameObject.SetActive(!(CustomPlayer.health > value));
+                                    break;
+                                }
+                            case 8:
+                                {
+                                    bool active = Input.GetKey(GetKeyCode((int)value));
+                                    if (!not)
+                                        obj.gameObject.SetActive(active);
+                                    else
+                                        obj.gameObject.SetActive(!active);
+                                    break;
+                                }
+                        }
+                    }
+
+                    int col = (int)obj.values["Color"];
+                    string hex = (string)obj.values["Custom Color"];
+                    float alpha = (float)obj.values["Opacity"];
+                    if (((MeshRenderer)obj.values["MeshRenderer"]) != null && obj.gameObject.activeSelf)
+                    {
+                        ((MeshRenderer)obj.values["MeshRenderer"]).material.color = GetColor(col, alpha, hex);
                     }
                 }
         }
@@ -1786,15 +2641,62 @@ namespace CreativePlayers
         public void UpdateTail(int _health, Vector3 _pos)
         {
             Debug.LogFormat("{0}Update Tail: Player: [{1}] - Health: [{2}]", PlayerPlugin.className, playerIndex, _health);
-            for (int i = 1; i < path.Count; i++)
+            for (int i = 2; i < path.Count; i++)
             {
                 if (path[i].transform != null)
                 {
-                    if (i > _health)
-                        path[i].transform.gameObject.SetActive(false);
+                    if (i - 1 > _health)
+                    {
+                        if (path[i].transform.childCount != 0)
+                            path[i].transform.GetChild(0).gameObject.SetActive(false);
+                        else
+                            path[i].transform.gameObject.SetActive(false);
+                    }
                     else
-                        path[i].transform.gameObject.SetActive(true);
+                    {
+                        if (path[i].transform.childCount != 0)
+                            path[i].transform.GetChild(0).gameObject.SetActive(true);
+                        else
+                            path[i].transform.gameObject.SetActive(true);
+                    }
                 }
+            }
+
+            var currentModel = PlayerPlugin.CurrentModel(playerIndex);
+
+            if (healthObjects.Count > 0)
+            {
+                for (int i = 0; i < healthObjects.Count; i++)
+                {
+                    if (i < _health && (bool)currentModel.values["GUI Health Active"] && (int)currentModel.values["GUI Health Mode"] == 0)
+                        healthObjects[i].gameObject.SetActive(true);
+                    else
+                        healthObjects[i].gameObject.SetActive(false);
+                }
+            }
+
+            var text = health.GetComponent<Text>();
+            if ((bool)currentModel.values["GUI Health Active"] && ((int)currentModel.values["GUI Health Mode"] == 1 || (int)currentModel.values["GUI Health Mode"] == 2))
+            {
+                text.enabled = true;
+                if ((int)currentModel.values["GUI Health Mode"] == 1)
+                    text.text = _health.ToString();
+                else
+                    text.text = PlayerExtensions.ConvertHealthToEquals(_health, initialHealthCount);
+            }
+            else
+            {
+                text.enabled = false;
+            }
+            if ((bool)currentModel.values["GUI Health Active"] && (int)currentModel.values["GUI Health Mode"] == 3)
+            {
+                barBaseIm.gameObject.SetActive(true);
+                var e = (float)_health / (float)initialHealthCount;
+                barRT.sizeDelta = new Vector2(200f * e, 32f);
+            }
+            else
+            {
+                barBaseIm.gameObject.SetActive(false);
             }
             //for (int j = 1; j < _health + 1; j++)
             //{
@@ -1802,6 +2704,182 @@ namespace CreativePlayers
             //        path[j].transform.gameObject.SetActive(true);
             //}
         }
+
+        public Color GetColor(int col, float alpha, string hex)
+        {
+            if (col < 4)
+                return LSColors.fadeColor(GameManager.inst.LiveTheme.playerColors[col], alpha);
+            if (col == 4)
+                return LSColors.fadeColor(GameManager.inst.LiveTheme.guiColor, alpha);
+            if (col > 4 && col < 23)
+                return LSColors.fadeColor(GameManager.inst.LiveTheme.objectColors[col - 5], alpha);
+            if (col == 23)
+                return LSColors.fadeColor(GameManager.inst.LiveTheme.playerColors[playerIndex % 4], alpha);
+            if (col == 24)
+            {
+                return LSColors.fadeColor(LSColors.HexToColor(hex), alpha);
+            }
+
+            return LSColors.pink500;
+        }
+        
+        public Color GetColor(int col, string hex)
+        {
+            if (col < 4)
+                return GameManager.inst.LiveTheme.playerColors[col];
+            if (col == 4)
+                return GameManager.inst.LiveTheme.guiColor;
+            if (col > 4 && col < 23)
+                return GameManager.inst.LiveTheme.objectColors[col - 5];
+            if (col == 23)
+                return GameManager.inst.LiveTheme.playerColors[playerIndex % 4];
+            if (col == 24)
+            {
+                return LSColors.HexToColor(hex);
+            }
+
+            return LSColors.pink500;
+        }
+
+        #endregion
+
+        public KeyCode GetKeyCode(int key)
+        {
+            if (key < 91)
+            switch (key)
+            {
+                case 0: return KeyCode.None;
+                case 1: return KeyCode.Backspace;
+                case 2: return KeyCode.Tab;
+                case 3: return KeyCode.Clear;
+                case 4: return KeyCode.Return;
+                case 5: return KeyCode.Pause;
+                case 6: return KeyCode.Escape;
+                case 7: return KeyCode.Space;
+                case 8: return KeyCode.Quote;
+                case 9: return KeyCode.Comma;
+                case 10: return KeyCode.Minus;
+                case 11: return KeyCode.Period;
+                case 12: return KeyCode.Slash;
+                case 13: return KeyCode.Alpha0;
+                case 14: return KeyCode.Alpha1;
+                case 15: return KeyCode.Alpha2;
+                case 16: return KeyCode.Alpha3;
+                case 17: return KeyCode.Alpha4;
+                case 18: return KeyCode.Alpha5;
+                case 19: return KeyCode.Alpha6;
+                case 20: return KeyCode.Alpha7;
+                case 21: return KeyCode.Alpha8;
+                case 22: return KeyCode.Alpha9;
+                case 23: return KeyCode.Semicolon;
+                case 24: return KeyCode.Equals;
+                case 25: return KeyCode.LeftBracket;
+                case 26: return KeyCode.RightBracket;
+                case 27: return KeyCode.Backslash;
+                case 28: return KeyCode.A;
+                case 29: return KeyCode.B;
+                case 30: return KeyCode.C;
+                case 31: return KeyCode.D;
+                case 32: return KeyCode.E;
+                case 33: return KeyCode.F;
+                case 34: return KeyCode.G;
+                case 35: return KeyCode.H;
+                case 36: return KeyCode.I;
+                case 37: return KeyCode.J;
+                case 38: return KeyCode.K;
+                case 39: return KeyCode.L;
+                case 40: return KeyCode.M;
+                case 41: return KeyCode.N;
+                case 42: return KeyCode.O;
+                case 43: return KeyCode.P;
+                case 44: return KeyCode.Q;
+                case 45: return KeyCode.R;
+                case 46: return KeyCode.S;
+                case 47: return KeyCode.T;
+                case 48: return KeyCode.U;
+                case 49: return KeyCode.V;
+                case 50: return KeyCode.W;
+                case 51: return KeyCode.X;
+                case 52: return KeyCode.Y;
+                case 53: return KeyCode.Z;
+                case 54: return KeyCode.Keypad0;
+                case 55: return KeyCode.Keypad1;
+                case 56: return KeyCode.Keypad2;
+                case 57: return KeyCode.Keypad3;
+                case 58: return KeyCode.Keypad4;
+                case 59: return KeyCode.Keypad5;
+                case 60: return KeyCode.Keypad6;
+                case 61: return KeyCode.Keypad7;
+                case 62: return KeyCode.Keypad8;
+                case 63: return KeyCode.Keypad9;
+                case 64: return KeyCode.KeypadDivide;
+                case 65: return KeyCode.KeypadMultiply;
+                case 66: return KeyCode.KeypadMinus;
+                case 67: return KeyCode.KeypadPlus;
+                case 68: return KeyCode.KeypadEnter;
+                case 69: return KeyCode.UpArrow;
+                case 70: return KeyCode.DownArrow;
+                case 71: return KeyCode.RightArrow;
+                case 72: return KeyCode.LeftArrow;
+                case 73: return KeyCode.Insert;
+                case 74: return KeyCode.Home;
+                case 75: return KeyCode.End;
+                case 76: return KeyCode.PageUp;
+                case 77: return KeyCode.PageDown;
+                case 78: return KeyCode.RightShift;
+                case 79: return KeyCode.LeftShift;
+                case 80: return KeyCode.RightControl;
+                case 81: return KeyCode.LeftControl;
+                case 82: return KeyCode.RightAlt;
+                case 83: return KeyCode.LeftAlt;
+                case 84: return KeyCode.Mouse0;
+                case 85: return KeyCode.Mouse1;
+                case 86: return KeyCode.Mouse2;
+                case 87: return KeyCode.Mouse3;
+                case 88: return KeyCode.Mouse4;
+                case 89: return KeyCode.Mouse5;
+                case 90: return KeyCode.Mouse6;
+            }
+
+            if (key > 90)
+            {
+                int num = key + 259;
+
+                if (IndexToInt(CustomPlayer.playerIndex) > 0)
+                {
+                    string str = (IndexToInt(CustomPlayer.playerIndex) * 2).ToString() + "0";
+                    num += int.Parse(str);
+                }
+
+                return (KeyCode)num;
+            }
+
+            return KeyCode.None;
+        }
+
+        public int IndexToInt(PlayerIndex playerIndex)
+        {
+            if (playerIndex == PlayerIndex.One)
+                return 0;
+            if (playerIndex == PlayerIndex.Two)
+                return 1;
+            if (playerIndex == PlayerIndex.Three)
+                return 2;
+            if (playerIndex == PlayerIndex.Four)
+                return 3;
+            if (playerIndex == (PlayerIndex)4)
+                return 4;
+            if (playerIndex == (PlayerIndex)5)
+                return 5;
+            if (playerIndex == (PlayerIndex)6)
+                return 6;
+            if (playerIndex == (PlayerIndex)7)
+                return 7;
+
+            return 0;
+        }
+
+        #region Objects
 
         public Dictionary<string, PlayerObject> customObjects = new Dictionary<string, PlayerObject>();
         public Dictionary<string, PlayerObject> playerObjects = new Dictionary<string, PlayerObject>();
@@ -1848,6 +2926,16 @@ namespace CreativePlayers
                 transform = _tf;
             }
 
+            public MovementPath(Vector3 _pos, Quaternion _rot, Transform _tf, bool active)
+            {
+                pos = _pos;
+                rot = _rot;
+                transform = _tf;
+                this.active = active;
+            }
+
+            public bool active = true;
+
             public Vector3 lastPos;
             public Vector3 pos;
 
@@ -1855,5 +2943,21 @@ namespace CreativePlayers
 
             public Transform transform;
         }
+
+        public List<HealthObject> healthObjects = new List<HealthObject>();
+
+        public class HealthObject
+        {
+            public HealthObject(GameObject gameObject, Image image)
+            {
+                this.gameObject = gameObject;
+                this.image = image;
+            }
+
+            public GameObject gameObject;
+            public Image image;
+        }
+
+        #endregion
     }
 }

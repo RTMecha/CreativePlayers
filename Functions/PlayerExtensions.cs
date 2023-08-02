@@ -11,33 +11,48 @@ using CreativePlayers.Functions.Data;
 
 using Obj = UnityEngine.Object;
 
+using RTFunctions.Functions;
+
 namespace CreativePlayers.Functions
 {
-    public static class RTExtensions
+    public static class PlayerExtensions
     {
         public static GameObject textMeshPro;
         public static Material fontMaterial;
         public static Font inconsolataFont = Font.GetDefault();
 
-        public static void FixedPlay(this ParticleSystem _ps)
-        {
-            _ps.Play();
-            
-        }
-
-        //F:/PA_Builds/PA Launcher App/bin/Debug/net6.0-windows/4.1.16-BepInEx-5.4.21/beatmaps/story\CA - Ahead of the Curve [PAA3]\level.ogg
-        public static string basePath
+        public static float Pitch
         {
             get
             {
-                if (!string.IsNullOrEmpty(GameManager.inst.basePath))
+                float pitch = AudioManager.inst.pitch;
+                if (pitch < 0f)
                 {
-                    return GameManager.inst.basePath;
+                    pitch = -pitch;
                 }
-                else
-                {
-                    return SaveManager.inst.ArcadeQueue.AudioFileStr.Replace(RTFile.GetApplicationDirectory(), "").Replace("\\level.ogg", "").Replace("\\", "/");
-                }
+
+                if (pitch == 0f)
+                    pitch = 0.0001f;
+
+                return pitch;
+            }
+        }
+
+        public static void AddCustomObject()
+        {
+            var currentModel = PlayerPlugin.CurrentModel(0);
+            if (currentModel != null)
+            {
+                currentModel.CreateCustomObject();
+            }
+        }
+
+        public static void RemoveCustomObject(string id)
+        {
+            var currentModel = PlayerPlugin.CurrentModel(0);
+            if (currentModel != null)
+            {
+                ((Dictionary<string, object>)currentModel.values["Custom Objects"]).Remove(id);
             }
         }
 
@@ -102,7 +117,7 @@ namespace CreativePlayers.Functions
                 n = "Canvas";
             }
             var inter = new GameObject(n);
-            inter.transform.localScale = Vector3.one * EditorManager.inst.ScreenScale;
+            inter.transform.localScale = Vector3.one * RTHelpers.screenScale;
             var interfaceRT = inter.AddComponent<RectTransform>();
             interfaceRT.anchoredPosition = new Vector2(960f, 540f);
             interfaceRT.sizeDelta = new Vector2(1920f, 1080f);
@@ -116,7 +131,7 @@ namespace CreativePlayers.Functions
             canvas.additionalShaderChannels = AdditionalCanvasShaderChannels.Tangent;
             canvas.additionalShaderChannels = AdditionalCanvasShaderChannels.Normal;
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            canvas.scaleFactor = EditorManager.inst.ScreenScale;
+            canvas.scaleFactor = RTHelpers.screenScale;
 
             var canvasScaler = inter.AddComponent<CanvasScaler>();
             canvasScaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
@@ -376,7 +391,7 @@ namespace CreativePlayers.Functions
         {
             if (RTFile.FileExists(_filePath))
             {
-                SpriteManager.inst.StartCoroutine(SpriteManager.GetSprite(RTFile.GetApplicationDirectory() + _filePath, new SpriteManager.SpriteLimits(), delegate (Sprite cover)
+                SpriteManager.inst.StartCoroutine(SpriteManager.GetSprite(RTFile.ApplicationDirectory + _filePath, new SpriteManager.SpriteLimits(), delegate (Sprite cover)
                 {
                     _image.sprite = cover;
                 }, delegate (string errorFile)
@@ -404,68 +419,6 @@ namespace CreativePlayers.Functions
             }
 
             return str += "]";
-        }
-
-
-        public static void CreateCollider(this PolygonCollider2D polygonCollider2D, MeshFilter meshFilter)
-        {
-            int[] triangles = meshFilter.mesh.triangles;
-            Vector3[] vertices = meshFilter.mesh.vertices;
-            Dictionary<string, KeyValuePair<int, int>> dictionary = new Dictionary<string, KeyValuePair<int, int>>();
-            for (int i = 0; i < triangles.Length; i += 3)
-            {
-                for (int j = 0; j < 3; j++)
-                {
-                    int num = triangles[i + j];
-                    int num2 = triangles[(i + j + 1 > i + 2) ? i : (i + j + 1)];
-                    string key = Mathf.Min(num, num2) + ":" + Mathf.Max(num, num2);
-                    if (dictionary.ContainsKey(key))
-                    {
-                        dictionary.Remove(key);
-                    }
-                    else
-                    {
-                        dictionary.Add(key, new KeyValuePair<int, int>(num, num2));
-                    }
-                }
-            }
-            Dictionary<int, int> dictionary2 = new Dictionary<int, int>();
-            foreach (KeyValuePair<int, int> keyValuePair in dictionary.Values)
-            {
-                if (!dictionary2.ContainsKey(keyValuePair.Key))
-                {
-                    dictionary2.Add(keyValuePair.Key, keyValuePair.Value);
-                }
-            }
-
-            polygonCollider2D.pathCount = 0;
-            int num3 = 0;
-            int num4 = num3;
-            int num5 = num3;
-            List<Vector2> list = new List<Vector2>();
-            for (; ; )
-            {
-                list.Add(vertices[num4]);
-                num4 = dictionary2[num4];
-                if (num4 > num5)
-                {
-                    num5 = num4;
-                }
-                if (num4 == num3)
-                {
-                    PolygonCollider2D polygonCollider2D2 = polygonCollider2D;
-                    int pathCount = polygonCollider2D2.pathCount;
-                    polygonCollider2D2.pathCount = pathCount + 1;
-                    polygonCollider2D.SetPath(polygonCollider2D.pathCount - 1, list.ToArray());
-                    list.Clear();
-                    if (!dictionary2.ContainsKey(num5 + 1))
-                    {
-                        break;
-                    }
-                    num3 = num5 + 1;
-                    num4 = num3;
-                }
-            }
         }
     }
 }
