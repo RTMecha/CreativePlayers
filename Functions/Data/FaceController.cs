@@ -10,8 +10,9 @@ namespace CreativePlayers.Functions.Data
             Down = CreatePlayerAction("Move Down");
             Left = CreatePlayerAction("Move Left");
             Right = CreatePlayerAction("Move Right");
+			Shoot = CreatePlayerAction("Join");
 
-            Move = CreateTwoAxisPlayerAction(Left, Right, Down, Up);
+			Move = CreateTwoAxisPlayerAction(Left, Right, Down, Up);
             Up.StateThreshold = 0.3f;
             Down.StateThreshold = 0.3f;
             Left.StateThreshold = 0.3f;
@@ -29,6 +30,8 @@ namespace CreativePlayers.Functions.Data
 			myGameActions.Down.AddDefaultBinding(Key.K);
 			myGameActions.Left.AddDefaultBinding(Key.J);
 			myGameActions.Right.AddDefaultBinding(Key.L);
+			myGameActions.Shoot.AddDefaultBinding(PlayerPlugin.PlayerShootControl.Value);
+			myGameActions.Shoot.AddDefaultBinding(PlayerPlugin.PlayerShootKey.Value);
 
 			return myGameActions;
 		}
@@ -40,6 +43,7 @@ namespace CreativePlayers.Functions.Data
 			myGameActions.Down.AddDefaultBinding(InputControlType.RightStickDown);
 			myGameActions.Left.AddDefaultBinding(InputControlType.RightStickLeft);
 			myGameActions.Right.AddDefaultBinding(InputControlType.RightStickRight);
+			myGameActions.Shoot.AddDefaultBinding(PlayerPlugin.PlayerShootControl.Value);
 
 			return myGameActions;
 		}
@@ -53,6 +57,7 @@ namespace CreativePlayers.Functions.Data
 				myGameActions.Down.AddDefaultBinding(Key.K);
 				myGameActions.Left.AddDefaultBinding(Key.J);
 				myGameActions.Right.AddDefaultBinding(Key.L);
+				myGameActions.Shoot.AddDefaultBinding(PlayerPlugin.PlayerShootKey.Value);
 			}
 			return myGameActions;
 		}
@@ -64,6 +69,8 @@ namespace CreativePlayers.Functions.Data
         public PlayerAction Left;
 
         public PlayerAction Right;
+
+		public PlayerAction Shoot;
 
         public PlayerTwoAxisAction Move;
     }
