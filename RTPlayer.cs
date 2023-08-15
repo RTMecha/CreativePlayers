@@ -20,6 +20,7 @@ using CreativePlayers.Functions.Components;
 using CreativePlayers.Functions.Data;
 
 using RTFunctions.Functions;
+using RTFunctions.Functions.Managers;
 
 namespace CreativePlayers
 {
@@ -94,7 +95,7 @@ namespace CreativePlayers
         private float lastMoveVertical;
         private Vector3 lastVelocity;
 
-        private Vector2 lastMovement;
+        public Vector2 lastMovement;
 
         private float startHurtTime;
         private float startBoostTime;
@@ -239,7 +240,9 @@ namespace CreativePlayers
 
             playerObjects.Add("Base", new PlayerObject("Base", gameObject));
             playerObjects["Base"].values.Add("Transform", gameObject.transform);
-            playerObjects["Base"].values.Add("Animator", gameObject.GetComponent<Animator>());
+            var anim = gameObject.GetComponent<Animator>();
+            anim.keepAnimatorControllerStateOnDisable = true;
+            playerObjects["Base"].values.Add("Animator", anim);
 
             var rb = transform.Find("Player").gameObject;
             playerObjects.Add("RB Parent", new PlayerObject("RB Parent", rb));
@@ -337,6 +340,7 @@ namespace CreativePlayers
                 boostBase.transform.SetParent(transform.Find("Player"));
                 boost.transform.SetParent(boostBase.transform);
                 boost.transform.localPosition = Vector3.zero;
+                boost.transform.localRotation = Quaternion.identity;
 
                 playerObjects.Add("Boost Base", new PlayerObject("Boost Base", boostBase));
 
@@ -367,18 +371,21 @@ namespace CreativePlayers
                 GameObject delayTarget = new GameObject("tail-tracker");
                 delayTarget.transform.SetParent(rb.transform);
                 delayTarget.transform.localPosition = new Vector3(-0.5f, 0f, 0.1f);
+                delayTarget.transform.localRotation = Quaternion.identity;
                 playerObjects.Add("Tail Tracker", new PlayerObject("Tail Tracker", delayTarget));
 
                 var faceBase = new GameObject("face-base");
                 faceBase.transform.SetParent(rb.transform);
                 faceBase.transform.localPosition = Vector3.zero;
                 faceBase.transform.localScale = Vector3.one;
+                
                 playerObjects.Add("Face Base", new PlayerObject("Face Base", faceBase));
 
                 var faceParent = new GameObject("face-parent");
                 faceParent.transform.SetParent(faceBase.transform);
                 faceParent.transform.localPosition = Vector3.zero;
                 faceParent.transform.localScale = Vector3.one;
+                faceParent.transform.localRotation = Quaternion.identity;
                 playerObjects.Add("Face Parent", new PlayerObject("Face Parent", faceParent));
 
                 //DelayTracker
@@ -589,6 +596,7 @@ namespace CreativePlayers
             ((Animator)playerObjects["Base"].values["Animator"]).SetTrigger("spawn");
             PlaySpawnParticles();
             SetBindings(Actions);
+            Debug.LogFormat("{0}Spawned Player {1}", PlayerPlugin.className, playerIndex);
         }
 
         private MyGameActions SetBindings(MyGameActions _actions)
@@ -604,8 +612,8 @@ namespace CreativePlayers
                 myGameActions.Left.AddDefaultBinding(InputControlType.LeftStickLeft);
                 myGameActions.Right.AddDefaultBinding(InputControlType.DPadRight);
                 myGameActions.Right.AddDefaultBinding(InputControlType.LeftStickRight);
-                myGameActions.Boost.AddDefaultBinding(InputControlType.RightTrigger);
-                myGameActions.Boost.AddDefaultBinding(InputControlType.RightBumper);
+                //myGameActions.Boost.AddDefaultBinding(InputControlType.RightTrigger);
+                //myGameActions.Boost.AddDefaultBinding(InputControlType.RightBumper);
                 myGameActions.Boost.AddDefaultBinding(InputControlType.Action1);
                 myGameActions.Boost.AddDefaultBinding(InputControlType.Action3);
                 myGameActions.Join.AddDefaultBinding(InputControlType.Action1);
@@ -617,6 +625,22 @@ namespace CreativePlayers
                 myGameActions.Escape.AddDefaultBinding(InputControlType.Action4);
                 return myGameActions;
             }
+            else if (CustomPlayer.device == null)
+            {
+                MyGameActions myGameActions = _actions;
+
+                foreach (var action in myGameActions.Actions)
+                {
+                    for (int i = 0; i < action.Bindings.Count; i++)
+                    {
+                        if (action.Bindings[i].BindingSourceType == BindingSourceType.DeviceBindingSource)
+                            action.RemoveBindingAt(i);
+                    }
+                }
+
+                return myGameActions;
+            }
+
             return _actions;
         }
 
@@ -645,6 +669,16 @@ namespace CreativePlayers
                 UpdateTailDistance();
             }
 
+            var currentModel = PlayerPlugin.CurrentModel(playerIndex);
+            if (playerObjects["Boost Trail"].values["TrailRenderer"] != null && currentModel != null && (bool)currentModel.values["Boost Trail Emitting"])
+            {
+                var tf = playerObjects["Boost"].gameObject.transform;
+                Vector2 v = new Vector2(tf.localScale.x, tf.localScale.y);
+
+                ((TrailRenderer)playerObjects["Boost Trail"].values["TrailRenderer"]).startWidth = (float)currentModel.values["Boost Trail Start Width"] * v.magnitude / 1.414213f;
+                ((TrailRenderer)playerObjects["Boost Trail"].values["TrailRenderer"]).endWidth = (float)currentModel.values["Boost Trail End Width"] * v.magnitude / 1.414213f;
+            }
+
             if (GameManager.inst == null || GameManager.inst.gameState != GameManager.State.Paused)
             {
                 if (!PlayerAlive && !isDead)
@@ -663,18 +697,22 @@ namespace CreativePlayers
                         InitMidBoost(true);
                     }
                 }
-            }
 
-            var currentModel = PlayerPlugin.CurrentModel(playerIndex);
-            if (playerObjects["Boost Trail"].values["TrailRenderer"] != null && currentModel != null && (bool)currentModel.values["Boost Trail Emitting"])
-            {
-                var tf = playerObjects["Boost"].gameObject.transform;
-                Vector2 v = new Vector2(tf.localScale.x, tf.localScale.y);
-
-                ((TrailRenderer)playerObjects["Boost Trail"].values["TrailRenderer"]).startWidth = (float)currentModel.values["Boost Trail Start Width"] * v.magnitude / 1.414213f;
-                ((TrailRenderer)playerObjects["Boost Trail"].values["TrailRenderer"]).endWidth = (float)currentModel.values["Boost Trail End Width"] * v.magnitude / 1.414213f;
+                if (PlayerAlive && faceController != null && currentModel.values.ContainsKey("Bullet Constant"))
+                {
+                    if (!(bool)currentModel.values["Bullet Constant"] && faceController.Shoot.WasPressed && canShoot)
+                    {
+                        CreateBullet();
+                    }
+                    if ((bool)currentModel.values["Bullet Constant"] && faceController.Shoot.IsPressed && canShoot)
+                    {
+                        CreateBullet();
+                    }
+                }
             }
         }
+
+        bool canShoot = true;
 
         private void FixedUpdate()
         {
@@ -709,8 +747,13 @@ namespace CreativePlayers
             var player = playerObjects["RB Parent"].gameObject;
             var currentModel = PlayerPlugin.CurrentModel(playerIndex);
 
-            if (PlayerAlive && Actions != null && InputDataManager.inst.players[playerIndex].active && CanMove && (GameManager.inst == null || GameManager.inst.gameState != GameManager.State.Paused) && !LSHelpers.IsUsingInputField() && movementMode == MovementMode.KeyboardController)
+            if (PlayerAlive && Actions != null && InputDataManager.inst.players[playerIndex].active && CanMove && (GameManager.inst == null || GameManager.inst.gameState != GameManager.State.Paused) && !LSHelpers.IsUsingInputField() && movementMode == MovementMode.KeyboardController && (!ModCompatibility.sharedFunctions.ContainsKey("EventsCoreEditorOffset") || !(bool)ModCompatibility.sharedFunctions["EventsCoreEditorOffset"]))
             {
+                //if (Actions.Escape.WasPressed && EditorManager.inst != null && !EditorManager.inst.isEditing)
+                //{
+                //    EditorManager.inst.ToggleEditor();
+                //}
+
                 float x = Actions.Move.Vector.x;
                 float y = Actions.Move.Vector.y;
                 if (x != 0f)
@@ -852,7 +895,7 @@ namespace CreativePlayers
                 rb.velocity = Vector3.zero;
             }
 
-            if (PlayerAlive && InputDataManager.inst.players[playerIndex].active && CanMove && (GameManager.inst == null || GameManager.inst.gameState != GameManager.State.Paused) && !LSHelpers.IsUsingInputField() && movementMode == MovementMode.Mouse && (EditorManager.inst == null || !EditorManager.inst.isEditing) && Application.isFocused && isKeyboard)
+            if (PlayerAlive && InputDataManager.inst.players[playerIndex].active && CanMove && (GameManager.inst == null || GameManager.inst.gameState != GameManager.State.Paused) && !LSHelpers.IsUsingInputField() && movementMode == MovementMode.Mouse && (EditorManager.inst == null || !EditorManager.inst.isEditing) && Application.isFocused && isKeyboard && (!ModCompatibility.sharedFunctions.ContainsKey("EventsCoreEditorOffset") || !(bool)ModCompatibility.sharedFunctions["EventsCoreEditorOffset"]))
             {
                 Vector2 screenCenter = new Vector2(1920 / 2 * (int)EditorManager.inst.ScreenScale, 1080 / 2 * (int)EditorManager.inst.ScreenScale);
                 Vector2 mousePos = new Vector2(System.Windows.Forms.Cursor.Position.X - screenCenter.x, -(System.Windows.Forms.Cursor.Position.Y - (screenCenter.y * 2)) - screenCenter.y);
@@ -862,21 +905,28 @@ namespace CreativePlayers
                     System.Windows.Forms.Cursor.Position = new System.Drawing.Point((int)screenCenter.x, (int)screenCenter.y);
                 }
 
+                var mousePosition = Input.mousePosition;
+                mousePosition = Camera.main.WorldToScreenPoint(mousePosition);
+
                 float num = idleSpeed * 0.00025f;
                 if (isBoosting)
                     num = boostSpeed * 0.0001f;
 
-                player.transform.position += new Vector3(mousePos.x * num, mousePos.y * num, 0f);
-                lastMousePos = new Vector2(System.Windows.Forms.Cursor.Position.X, System.Windows.Forms.Cursor.Position.Y);
+                //player.transform.position += new Vector3(mousePos.x * num, mousePos.y * num, 0f);
+                player.transform.localPosition = new Vector3(mousePosition.x, mousePosition.y, 0f);
+                lastMousePos = new Vector2(mousePosition.x, mousePosition.y);
             }
 
-            Vector3 vector2 = Camera.main.WorldToViewportPoint(player.transform.position);
-            vector2.x = Mathf.Clamp(vector2.x, 0f, 1f);
-            vector2.y = Mathf.Clamp(vector2.y, 0f, 1f);
-            if (Camera.main.orthographicSize > 0f && (!includeNegativeZoom || Camera.main.orthographicSize < 0f))
+            if ((!ModCompatibility.sharedFunctions.ContainsKey("EventsCoreEditorOffset") || !(bool)ModCompatibility.sharedFunctions["EventsCoreEditorOffset"]))
             {
-                float maxDistanceDelta = Time.deltaTime * 1500f;
-                player.transform.position = Vector3.MoveTowards(lastPos, Camera.main.ViewportToWorldPoint(vector2), maxDistanceDelta);
+                Vector3 vector2 = Camera.main.WorldToViewportPoint(player.transform.position);
+                vector2.x = Mathf.Clamp(vector2.x, 0f, 1f);
+                vector2.y = Mathf.Clamp(vector2.y, 0f, 1f);
+                if (Camera.main.orthographicSize > 0f && (!includeNegativeZoom || Camera.main.orthographicSize < 0f))
+                {
+                    float maxDistanceDelta = Time.deltaTime * 1500f;
+                    player.transform.position = Vector3.MoveTowards(lastPos, Camera.main.ViewportToWorldPoint(vector2), maxDistanceDelta);
+                }
             }
 
             if ((bool)currentModel.values["Face Control Active"] && faceController != null)
@@ -887,6 +937,7 @@ namespace CreativePlayers
                 {
                     vector = vector.normalized;
                 }
+
                 if (rotateMode == RotateMode.FlipX && lastMovement.x < 0f)
                     vector.x = -vector.x;
                 if (rotateMode == RotateMode.FlipY && lastMovement.y < 0f)
@@ -901,20 +952,26 @@ namespace CreativePlayers
 
                 var c = Quaternion.Slerp(player.transform.rotation, b, 720f * Time.deltaTime).eulerAngles;
 
-                if (c.z > 90f && c.z < 270f)
+                if (rotateMode == RotateMode.FlipX && c.z > 90f && c.z < 270f)
                 {
                     c.z = -c.z + 180f;
+                }
+                if (rotateMode == RotateMode.FlipY && c.z > 0f && c.z < 180f)
+                {
+                    c.z = -c.z + 90f;
                 }
 
                 playerObjects["Face Base"].gameObject.transform.rotation = Quaternion.Euler(c);
             }
+
             if (rotateMode == RotateMode.RotateToDirection)
             {
                 Quaternion b = Quaternion.AngleAxis(Mathf.Atan2(lastMovement.y, lastMovement.x) * 57.29578f, player.transform.forward);
                 player.transform.rotation = Quaternion.Slerp(player.transform.rotation, b, 720f * Time.deltaTime);
 
-                playerObjects["Face Base"].gameObject.transform.rotation = Quaternion.identity;
+                playerObjects["Face Base"].gameObject.transform.localRotation = Quaternion.identity;
             }
+
             if (rotateMode == RotateMode.FlipX)
             {
                 player.transform.rotation = Quaternion.identity;
@@ -945,6 +1002,18 @@ namespace CreativePlayers
                 player.transform.rotation = Quaternion.identity;
                 if (lastMovement.y > 0.001f)
                 {
+                    float x = player.transform.localScale.x;
+                    float y = player.transform.localScale.y;
+
+                    if (x < 0f)
+                    {
+                        x = -x;
+                    }
+                    if (y < 0f)
+                    {
+                        y = -y;
+                    }
+
                     if (!stretch)
                         player.transform.localScale = Vector3.one;
                     if (!animatingBoost)
@@ -971,7 +1040,8 @@ namespace CreativePlayers
                 player.transform.rotation = Quaternion.identity;
             }
 
-            var posCalc = (player.transform.position - lastPos) * 50.2008f;
+            //var posCalc = (player.transform.position - lastPos) * 50.2008f;
+            var posCalc = (player.transform.position - lastPos);
 
             if (posCalc.x < -0.001f || posCalc.x > 0.001f || posCalc.y < -0.001f || posCalc.y > 0.001f)
             {
@@ -1078,10 +1148,10 @@ namespace CreativePlayers
                     if (i == 1)
                     {
                         var delayTracker = (DelayTracker)playerObjects["Boost Tail Base"].values["DelayTracker"];
-                        if (rotateMode != RotateMode.FlipX || rotateMode == RotateMode.FlipX && lastMovement.x > 0f)
+                        //if (rotateMode != RotateMode.FlipX || rotateMode == RotateMode.FlipX && lastMovement.x > 0f)
                             delayTracker.offset = -i * tailDistance / 2f;
-                        else if (rotateMode == RotateMode.FlipX && lastMovement.x < 0)
-                            delayTracker.offset = -(-i * tailDistance / 2f);
+                        //else if (rotateMode == RotateMode.FlipX && lastMovement.x < 0)
+                        //    delayTracker.offset = -(-i * tailDistance / 2f);
                         delayTracker.positionOffset = 0.1f * (-i + 5);
                         delayTracker.rotationOffset = 0.1f * (-i + 5);
                     }
@@ -1089,10 +1159,10 @@ namespace CreativePlayers
                     if (playerObjects.ContainsKey(string.Format("Tail {0} Base", i)))
                     {
                         var delayTracker = (DelayTracker)playerObjects[string.Format("Tail {0} Base", i)].values["DelayTracker"];
-                        if (rotateMode != RotateMode.FlipX || rotateMode == RotateMode.FlipX && lastMovement.x > 0f)
+                        //if (rotateMode != RotateMode.FlipX || rotateMode == RotateMode.FlipX && lastMovement.x > 0f)
                             delayTracker.offset = -num * tailDistance / 2f;
-                        else if (rotateMode == RotateMode.FlipX && lastMovement.x < 0)
-                            delayTracker.offset = -(-num * tailDistance / 2f);
+                        //else if (rotateMode == RotateMode.FlipX && lastMovement.x < 0)
+                        //    delayTracker.offset = -(-num * tailDistance / 2f);
                         delayTracker.positionOffset = 0.1f * (-num + 5);
                         delayTracker.rotationOffset = 0.1f * (-num + 5);
                     }
@@ -1119,7 +1189,7 @@ namespace CreativePlayers
 
         public void OnChildTriggerEnter(Collider2D _other)
         {
-            if ((EditorManager.inst != null && !PlayerPlugin.ZenModeInEditor.Value || EditorManager.inst == null) && _other.tag != "Helper" && _other.tag != "Player" && CanTakeDamage && !isBoosting)
+            if ((EditorManager.inst != null && !PlayerPlugin.ZenModeInEditor.Value || EditorManager.inst == null) && _other.tag != "Helper" && _other.tag != "Player" && CanTakeDamage && !isBoosting && _other.name != "bullet (Player " + (playerIndex + 1).ToString() + ")")
             {
                 PlayerHit();
             }
@@ -1127,7 +1197,7 @@ namespace CreativePlayers
 
         public void OnChildTriggerEnterMesh(Collider _other)
         {
-            if ((EditorManager.inst != null && !PlayerPlugin.ZenModeInEditor.Value || EditorManager.inst == null) && _other.tag != "Helper" && _other.tag != "Player" && CanTakeDamage && !isBoosting)
+            if ((EditorManager.inst != null && !PlayerPlugin.ZenModeInEditor.Value || EditorManager.inst == null) && _other.tag != "Helper" && _other.tag != "Player" && CanTakeDamage && !isBoosting && _other.name != "bullet (Player " + (playerIndex + 1).ToString() + ")")
             {
                 PlayerHit();
             }
@@ -1135,7 +1205,7 @@ namespace CreativePlayers
 
         public void OnChildTriggerStay(Collider2D _other)
         {
-            if ((EditorManager.inst != null && !PlayerPlugin.ZenModeInEditor.Value || EditorManager.inst == null) && _other.tag != "Helper" && _other.tag != "Player" && CanTakeDamage)
+            if ((EditorManager.inst != null && !PlayerPlugin.ZenModeInEditor.Value || EditorManager.inst == null) && _other.tag != "Helper" && _other.tag != "Player" && CanTakeDamage && _other.name != "bullet (Player " + (playerIndex + 1).ToString() + ")")
             {
                 PlayerHit();
             }
@@ -1143,7 +1213,7 @@ namespace CreativePlayers
 
         public void OnChildTriggerStayMesh(Collider _other)
         {
-            if ((EditorManager.inst != null && !PlayerPlugin.ZenModeInEditor.Value || EditorManager.inst == null) && _other.tag != "Helper" && _other.tag != "Player" && CanTakeDamage)
+            if ((EditorManager.inst != null && !PlayerPlugin.ZenModeInEditor.Value || EditorManager.inst == null) && _other.tag != "Helper" && _other.tag != "Player" && CanTakeDamage && _other.name != "bullet (Player " + (playerIndex + 1).ToString() + ")")
             {
                 PlayerHit();
             }
@@ -1210,6 +1280,8 @@ namespace CreativePlayers
 
         private IEnumerator Kill()
         {
+            Debug.LogFormat("{0}Player {1} died at {2} Controller: {3}", PlayerPlugin.className, playerIndex, AudioManager.inst.CurrentAudioSource.time, Actions.Device);
+
             isDead = true;
             if (playerDeathEvent != null)
             {
@@ -1220,7 +1292,7 @@ namespace CreativePlayers
             ((Animator)playerObjects["Base"].values["Animator"]).SetTrigger("kill");
             InputDataManager.inst.SetControllerRumble(playerIndex, 1f);
             yield return new WaitForSecondsRealtime(0.2f);
-            PlayerPlugin.players.RemoveAt(playerIndex);
+            PlayerPlugin.players.Remove(this);
             Destroy(health);
             Destroy(gameObject);
             InputDataManager.inst.StopControllerRumble(playerIndex);
@@ -1288,135 +1360,6 @@ namespace CreativePlayers
                 }
             }
         }
-
-        public void CreatePulse()
-        {
-            var currentModel = PlayerPlugin.CurrentModel(playerIndex);
-
-            if (currentModel == null || !currentModel.values.ContainsKey("Pulse Active") || !(bool)currentModel.values["Pulse Active"])
-            {
-                return;
-            }
-
-            var player = playerObjects["RB Parent"].gameObject;
-
-            int s = Mathf.Clamp(((Vector2Int)currentModel.values["Pulse Shape"]).x, 0, ObjectManager.inst.objectPrefabs.Count - 1);
-            int so = Mathf.Clamp(((Vector2Int)currentModel.values["Pulse Shape"]).y, 0, ObjectManager.inst.objectPrefabs[s].options.Count - 1);
-
-            var objcopy = ObjectManager.inst.objectPrefabs[s].options[so];
-            if (s == 4 || s == 6)
-            {
-                objcopy = ObjectManager.inst.objectPrefabs[0].options[0];
-            }
-
-            var pulse = Instantiate(objcopy);
-            pulse.transform.SetParent(ObjectManager.inst.objectParent.transform);
-            pulse.transform.localScale = new Vector3(((Vector2)currentModel.values["Pulse Start Scale"]).x, ((Vector2)currentModel.values["Pulse Start Scale"]).y, 1f);
-            pulse.transform.position = player.transform.position;
-            pulse.transform.GetChild(0).localPosition = new Vector3(((Vector2)currentModel.values["Pulse Start Position"]).x, ((Vector2)currentModel.values["Pulse Start Position"]).y, (float)currentModel.values["Pulse Depth"]);
-            pulse.transform.GetChild(0).localRotation = Quaternion.Euler(new Vector3(0f, 0f, (float)currentModel.values["Pulse Start Rotation"]));
-
-            if ((bool)currentModel.values["Pulse Rotate to Head"])
-            {
-                pulse.transform.localRotation = player.transform.localRotation;
-            }
-
-            //Destroy
-            {
-                if (pulse.transform.GetChild(0).GetComponent<SelectObjectInEditor>())
-                {
-                    Destroy(pulse.transform.GetChild(0).GetComponent<SelectObjectInEditor>());
-                }
-                if (pulse.transform.GetChild(0).GetComponent<BoxCollider2D>())
-                {
-                    Destroy(pulse.transform.GetChild(0).GetComponent<BoxCollider2D>());
-                }
-                if (pulse.transform.GetChild(0).GetComponent<PolygonCollider2D>())
-                {
-                    Destroy(pulse.transform.GetChild(0).GetComponent<PolygonCollider2D>());
-                }
-                if (pulse.transform.GetChild(0).gameObject.GetComponentByName("RTObject"))
-                {
-                    Destroy(pulse.transform.GetChild(0).gameObject.GetComponentByName("RTObject"));
-                }
-            }
-
-            var obj = new PlayerObject("Pulse", pulse.transform.GetChild(0).gameObject);
-
-            MeshRenderer pulseRenderer = pulse.transform.GetChild(0).GetComponent<MeshRenderer>();
-            obj.values.Add("MeshRenderer", pulseRenderer);
-            obj.values.Add("Opacity", 0f);
-            obj.values.Add("ColorTween", 0f);
-            obj.values.Add("StartColor", (int)currentModel.values["Pulse Start Color"]);
-            obj.values.Add("EndColor", (int)currentModel.values["Pulse End Color"]);
-            obj.values.Add("StartCustomColor", (string)currentModel.values["Pulse Start Custom Color"]);
-            obj.values.Add("EndCustomColor", (string)currentModel.values["Pulse End Custom Color"]);
-
-            boosts.Add(obj);
-
-            pulseRenderer.enabled = true;
-            pulseRenderer.material = ((MeshRenderer)playerObjects["Head"].values["MeshRenderer"]).material;
-            pulseRenderer.material.shader = ((MeshRenderer)playerObjects["Head"].values["MeshRenderer"]).material.shader;
-            Color colorBase = ((MeshRenderer)playerObjects["Head"].values["MeshRenderer"]).material.color;
-
-            int easingPos = (int)currentModel.values["Pulse Easing Position"];
-            int easingSca = (int)currentModel.values["Pulse Easing Scale"];
-            int easingRot = (int)currentModel.values["Pulse Easing Rotation"];
-            int easingOpa = (int)currentModel.values["Pulse Easing Opacity"];
-            int easingCol = (int)currentModel.values["Pulse Easing Color"];
-
-            float duration = Mathf.Clamp((float)currentModel.values["Pulse Duration"], 0.001f, 20f) / PlayerExtensions.Pitch;
-
-            pulse.transform.GetChild(0).DOLocalMove(new Vector3(((Vector2)currentModel.values["Pulse End Position"]).x, ((Vector2)currentModel.values["Pulse End Position"]).y, (float)currentModel.values["Pulse Depth"]), duration).SetEase(DataManager.inst.AnimationList[easingPos].Animation);
-            var tweenScale = pulse.transform.DOScale(new Vector3(((Vector2)currentModel.values["Pulse End Scale"]).x, ((Vector2)currentModel.values["Pulse End Scale"]).y, 1f), duration).SetEase(DataManager.inst.AnimationList[easingSca].Animation);
-            pulse.transform.GetChild(0).DOLocalRotate(new Vector3(0f, 0f, (float)currentModel.values["Pulse End Rotation"]), duration).SetEase(DataManager.inst.AnimationList[easingRot].Animation);
-
-            DOTween.To(delegate (float x)
-            {
-                obj.values["Opacity"] = x;
-            }, (float)currentModel.values["Pulse Start Opacity"], (float)currentModel.values["Pulse End Opacity"], duration).SetEase(DataManager.inst.AnimationList[easingOpa].Animation);
-            DOTween.To(delegate (float x)
-            {
-                obj.values["ColorTween"] = x;
-            }, 0f, 1f, duration).SetEase(DataManager.inst.AnimationList[easingCol].Animation);
-
-            tweenScale.OnComplete(delegate ()
-            {
-                Destroy(pulse);
-                boosts.Remove(obj);
-            });
-        }
-
-        public void UpdateBoostTheme()
-        {
-            if (boosts.Count > 0)
-            {
-                foreach (var boost in boosts)
-                {
-                    if (boost != null)
-                    {
-                        int startCol = (int)boost.values["StartColor"];
-                        int endCol = (int)boost.values["EndColor"];
-
-                        var startHex = (string)boost.values["StartCustomColor"];
-                        var endHex = (string)boost.values["EndCustomColor"];
-
-                        float alpha = (float)boost.values["Opacity"];
-                        float colorTween = (float)boost.values["ColorTween"];
-
-                        Color startColor = GetColor(startCol, alpha, startHex);
-                        Color endColor = GetColor(endCol, alpha, endHex);
-
-                        if (((MeshRenderer)boost.values["MeshRenderer"]) != null)
-                        {
-                            ((MeshRenderer)boost.values["MeshRenderer"]).material.color = Color.Lerp(startColor, endColor, colorTween);
-                        }
-                    }
-                }
-            }
-        }
-
-        public List<PlayerObject> boosts = new List<PlayerObject>();
 
         public void InitBeforeBoost()
         {
@@ -1713,6 +1656,7 @@ namespace CreativePlayers
                 var bae = Instantiate(ObjectManager.inst.objectPrefabs[0].options[0]);
                 bae.transform.SetParent(canvas.transform);
                 bae.transform.localScale = Vector3.one;
+                bae.transform.localRotation = Quaternion.identity;
 
                 bae.transform.GetChild(0).transform.localScale = new Vector3(6.5f, 1.5f, 1f);
                 bae.transform.GetChild(0).transform.localPosition = new Vector3(0f, 2.5f, -0.3f);
@@ -1727,9 +1671,10 @@ namespace CreativePlayers
                 var tae = Instantiate(ObjectManager.inst.objectPrefabs[4].options[0]);
                 tae.transform.SetParent(canvas.transform);
                 tae.transform.localScale = Vector3.one;
+                tae.transform.localRotation = Quaternion.identity;
 
                 tae.transform.GetChild(0).transform.localScale = new Vector3(0.5f, 0.5f, 0.5f);
-                tae.transform.GetChild(0).transform.localPosition = new Vector3(0f, 2f, -0.3f);
+                tae.transform.GetChild(0).transform.localPosition = new Vector3(0f, 2.5f, -0.3f);
 
                 textMesh = tae.GetComponentInChildren<TextMeshPro>();
 
@@ -1805,7 +1750,8 @@ namespace CreativePlayers
                 var h2 = (Vector2)currentModel.values["Head Scale"];
                 var h3 = (float)currentModel.values["Head Rotation"];
 
-                Debug.LogFormat("{0}Rendering Head\nPos: {1}\nSca: {2}\nRot: {3}", PlayerPlugin.className, h1, h2, h3);
+                if (PlayerPlugin.debug)
+                    Debug.LogFormat("{0}Rendering Head\nPos: {1}\nSca: {2}\nRot: {3}", PlayerPlugin.className, h1, h2, h3);
 
                 playerObjects["Head"].gameObject.transform.localPosition = new Vector3(h1.x, h1.y, 0f);
                 playerObjects["Head"].gameObject.transform.localScale = new Vector3(h2.x, h2.y, 1f);
@@ -1815,7 +1761,8 @@ namespace CreativePlayers
                 var b2 = (Vector2)currentModel.values["Boost Scale"];
                 var b3 = (float)currentModel.values["Boost Rotation"];
 
-                Debug.LogFormat("{0}Rendering Boost\nPos: {1}\nSca: {2}\nRot: {3}", PlayerPlugin.className, b1, b2, b3);
+                if (PlayerPlugin.debug)
+                    Debug.LogFormat("{0}Rendering Boost\nPos: {1}\nSca: {2}\nRot: {3}", PlayerPlugin.className, b1, b2, b3);
 
                 ((MeshRenderer)playerObjects["Boost"].values["MeshRenderer"]).enabled = (bool)currentModel.values["Boost Active"];
                 playerObjects["Boost Base"].gameObject.transform.localPosition = new Vector3(b1.x, b1.y, 0.1f);
@@ -1919,19 +1866,36 @@ namespace CreativePlayers
 
                 //Health Images
                 {
-                    if (RTFile.FileExists(RTFile.ApplicationDirectory + RTFile.basePath + "health.png"))
+                    if (RTFile.FileExists(RTFile.ApplicationDirectory + RTFile.basePath + "health.png") && !PlayerPlugin.AssetsGlobal.Value)
                     {
-                        Debug.LogFormat("{0}Updating Health GUI", PlayerPlugin.className);
+                        if (PlayerPlugin.debug)
+                            Debug.LogFormat("{0}Updating Health GUI", PlayerPlugin.className);
 
                         foreach (var health in healthObjects)
                         {
                             if (SpriteManager.inst != null && health.image != null)
+                            {
                                 SpriteManager.GetSprite(RTFile.ApplicationDirectory + RTFile.basePath + "health.png", health.image);
+                            }
+                        }
+                    }
+                    else if (RTFile.FileExists(RTFile.ApplicationDirectory + "BepInEx/plugins/Assets/health.png") && PlayerPlugin.AssetsGlobal.Value)
+                    {
+                        if (PlayerPlugin.debug)
+                            Debug.LogFormat("{0}Updating Health GUI", PlayerPlugin.className);
+
+                        foreach (var health in healthObjects)
+                        {
+                            if (SpriteManager.inst != null && health.image != null)
+                            {
+                                SpriteManager.GetSprite(RTFile.ApplicationDirectory + "BepInEx/plugins/Assets/health.png", health.image);
+                            }
                         }
                     }
                     else
                     {
-                        Debug.LogFormat("{0}Updating Health GUI without image", PlayerPlugin.className);
+                        if (PlayerPlugin.debug)
+                            Debug.LogFormat("{0}Updating Health GUI without image", PlayerPlugin.className);
 
                         foreach (var health in healthObjects)
                         {
@@ -2407,6 +2371,7 @@ namespace CreativePlayers
                             customObj.gameObject = Instantiate(ObjectManager.inst.objectPrefabs[s].options[so]);
                             customObj.gameObject.transform.SetParent(transform);
                             customObj.gameObject.transform.localScale = Vector3.one;
+                            customObj.gameObject.transform.localRotation = Quaternion.identity;
 
                             var delayTracker = customObj.gameObject.AddComponent<DelayTracker>();
                             delayTracker.offset = 0;
@@ -2480,7 +2445,8 @@ namespace CreativePlayers
             {
                 if (obj.Value.gameObject != null)
                 {
-                    Debug.LogFormat("{0}Destroying Custom Object! {1}", PlayerPlugin.className, obj.Key);
+                    if (PlayerPlugin.debug)
+                        Debug.LogFormat("{0}Destroying Custom Object! {1}", PlayerPlugin.className, obj.Key);
                     Destroy(obj.Value.gameObject);
                 }
             }
@@ -2522,7 +2488,8 @@ namespace CreativePlayers
         {
             var obj = new PlayerObject();
 
-            Debug.LogFormat("{0}Creating new PlayerObject!", PlayerPlugin.className);
+            if (PlayerPlugin.debug)
+                Debug.LogFormat("{0}Creating new PlayerObject!", PlayerPlugin.className);
 
             obj.name = "Object";
             obj.values = new Dictionary<string, object>();
@@ -2547,7 +2514,8 @@ namespace CreativePlayers
             var id = LSText.randomNumString(16);
             obj.values.Add("ID", id);
 
-            Debug.LogFormat("{0}Created new PlayerObject with id {1}!", PlayerPlugin.className, id);
+            if (PlayerPlugin.debug)
+                Debug.LogFormat("{0}Created new PlayerObject with id {1}!", PlayerPlugin.className, id);
 
             return obj;
         }
@@ -2587,7 +2555,7 @@ namespace CreativePlayers
                                 }
                             case 3:
                                 {
-                                    bool zen = DataManager.inst.GetSettingEnum("ArcadeDifficulty", 1) == 0 && (EditorManager.inst == null || PlayerPlugin.ZenModeInEditor.Value);
+                                    bool zen = DataManager.inst.GetSettingEnum("ArcadeDifficulty", 1) == 0 && EditorManager.inst == null || PlayerPlugin.ZenModeInEditor.Value;
                                     if (!not)
                                         obj.gameObject.SetActive(zen);
                                     else
@@ -2749,6 +2717,290 @@ namespace CreativePlayers
             }
 
             return LSColors.pink500;
+        }
+
+        #endregion
+
+        #region Actions
+
+        public void CreatePulse()
+        {
+            var currentModel = PlayerPlugin.CurrentModel(playerIndex);
+
+            if (currentModel == null || !currentModel.values.ContainsKey("Pulse Active") || !(bool)currentModel.values["Pulse Active"])
+            {
+                return;
+            }
+
+            var player = playerObjects["RB Parent"].gameObject;
+
+            int s = Mathf.Clamp(((Vector2Int)currentModel.values["Pulse Shape"]).x, 0, ObjectManager.inst.objectPrefabs.Count - 1);
+            int so = Mathf.Clamp(((Vector2Int)currentModel.values["Pulse Shape"]).y, 0, ObjectManager.inst.objectPrefabs[s].options.Count - 1);
+
+            var objcopy = ObjectManager.inst.objectPrefabs[s].options[so];
+            if (s == 4 || s == 6)
+            {
+                objcopy = ObjectManager.inst.objectPrefabs[0].options[0];
+            }
+
+            var pulse = Instantiate(objcopy);
+            pulse.transform.SetParent(ObjectManager.inst.objectParent.transform);
+            pulse.transform.localScale = new Vector3(((Vector2)currentModel.values["Pulse Start Scale"]).x, ((Vector2)currentModel.values["Pulse Start Scale"]).y, 1f);
+            pulse.transform.position = player.transform.position;
+            pulse.transform.GetChild(0).localPosition = new Vector3(((Vector2)currentModel.values["Pulse Start Position"]).x, ((Vector2)currentModel.values["Pulse Start Position"]).y, (float)currentModel.values["Pulse Depth"]);
+            pulse.transform.GetChild(0).localRotation = Quaternion.Euler(new Vector3(0f, 0f, (float)currentModel.values["Pulse Start Rotation"]));
+
+            if ((bool)currentModel.values["Pulse Rotate to Head"])
+            {
+                pulse.transform.localRotation = player.transform.localRotation;
+            }
+
+            //Destroy
+            {
+                if (pulse.transform.GetChild(0).GetComponent<SelectObjectInEditor>())
+                {
+                    Destroy(pulse.transform.GetChild(0).GetComponent<SelectObjectInEditor>());
+                }
+                if (pulse.transform.GetChild(0).GetComponent<BoxCollider2D>())
+                {
+                    Destroy(pulse.transform.GetChild(0).GetComponent<BoxCollider2D>());
+                }
+                if (pulse.transform.GetChild(0).GetComponent<PolygonCollider2D>())
+                {
+                    Destroy(pulse.transform.GetChild(0).GetComponent<PolygonCollider2D>());
+                }
+                if (pulse.transform.GetChild(0).gameObject.GetComponentByName("RTObject"))
+                {
+                    Destroy(pulse.transform.GetChild(0).gameObject.GetComponentByName("RTObject"));
+                }
+            }
+
+            var obj = new PlayerObject("Pulse", pulse.transform.GetChild(0).gameObject);
+
+            MeshRenderer pulseRenderer = pulse.transform.GetChild(0).GetComponent<MeshRenderer>();
+            obj.values.Add("MeshRenderer", pulseRenderer);
+            obj.values.Add("Opacity", 0f);
+            obj.values.Add("ColorTween", 0f);
+            obj.values.Add("StartColor", (int)currentModel.values["Pulse Start Color"]);
+            obj.values.Add("EndColor", (int)currentModel.values["Pulse End Color"]);
+            obj.values.Add("StartCustomColor", (string)currentModel.values["Pulse Start Custom Color"]);
+            obj.values.Add("EndCustomColor", (string)currentModel.values["Pulse End Custom Color"]);
+
+            boosts.Add(obj);
+
+            pulseRenderer.enabled = true;
+            pulseRenderer.material = ((MeshRenderer)playerObjects["Head"].values["MeshRenderer"]).material;
+            pulseRenderer.material.shader = ((MeshRenderer)playerObjects["Head"].values["MeshRenderer"]).material.shader;
+            Color colorBase = ((MeshRenderer)playerObjects["Head"].values["MeshRenderer"]).material.color;
+
+            int easingPos = (int)currentModel.values["Pulse Easing Position"];
+            int easingSca = (int)currentModel.values["Pulse Easing Scale"];
+            int easingRot = (int)currentModel.values["Pulse Easing Rotation"];
+            int easingOpa = (int)currentModel.values["Pulse Easing Opacity"];
+            int easingCol = (int)currentModel.values["Pulse Easing Color"];
+
+            float duration = Mathf.Clamp((float)currentModel.values["Pulse Duration"], 0.001f, 20f) / PlayerExtensions.Pitch;
+
+            pulse.transform.GetChild(0).DOLocalMove(new Vector3(((Vector2)currentModel.values["Pulse End Position"]).x, ((Vector2)currentModel.values["Pulse End Position"]).y, (float)currentModel.values["Pulse Depth"]), duration).SetEase(DataManager.inst.AnimationList[easingPos].Animation);
+            var tweenScale = pulse.transform.DOScale(new Vector3(((Vector2)currentModel.values["Pulse End Scale"]).x, ((Vector2)currentModel.values["Pulse End Scale"]).y, 1f), duration).SetEase(DataManager.inst.AnimationList[easingSca].Animation);
+            pulse.transform.GetChild(0).DOLocalRotate(new Vector3(0f, 0f, (float)currentModel.values["Pulse End Rotation"]), duration).SetEase(DataManager.inst.AnimationList[easingRot].Animation);
+
+            DOTween.To(delegate (float x)
+            {
+                obj.values["Opacity"] = x;
+            }, (float)currentModel.values["Pulse Start Opacity"], (float)currentModel.values["Pulse End Opacity"], duration).SetEase(DataManager.inst.AnimationList[easingOpa].Animation);
+            DOTween.To(delegate (float x)
+            {
+                obj.values["ColorTween"] = x;
+            }, 0f, 1f, duration).SetEase(DataManager.inst.AnimationList[easingCol].Animation);
+
+            tweenScale.OnComplete(delegate ()
+            {
+                Destroy(pulse);
+                boosts.Remove(obj);
+            });
+        }
+
+        public void UpdateBoostTheme()
+        {
+            if (boosts.Count > 0)
+            {
+                foreach (var boost in boosts)
+                {
+                    if (boost != null)
+                    {
+                        int startCol = (int)boost.values["StartColor"];
+                        int endCol = (int)boost.values["EndColor"];
+
+                        var startHex = (string)boost.values["StartCustomColor"];
+                        var endHex = (string)boost.values["EndCustomColor"];
+
+                        float alpha = (float)boost.values["Opacity"];
+                        float colorTween = (float)boost.values["ColorTween"];
+
+                        Color startColor = GetColor(startCol, alpha, startHex);
+                        Color endColor = GetColor(endCol, alpha, endHex);
+
+                        if (((MeshRenderer)boost.values["MeshRenderer"]) != null)
+                        {
+                            ((MeshRenderer)boost.values["MeshRenderer"]).material.color = Color.Lerp(startColor, endColor, colorTween);
+                        }
+                    }
+                }
+            }
+        }
+
+        public List<PlayerObject> boosts = new List<PlayerObject>();
+
+        public void PlaySound(AudioClip _clip, float pitch = 1f)
+        {
+            float p = pitch * PlayerExtensions.Pitch;
+
+            AudioSource audioSource = Camera.main.gameObject.AddComponent<AudioSource>();
+            audioSource.clip = _clip;
+            audioSource.playOnAwake = true;
+            audioSource.loop = false;
+            audioSource.volume = AudioManager.inst.sfxVol;
+            audioSource.pitch = pitch * AudioManager.inst.pitch;
+            audioSource.Play();
+            StartCoroutine(AudioManager.inst.DestroyWithDelay(audioSource, _clip.length / p));
+        }
+
+        public void CreateBullet()
+        {
+            if (PlayerPlugin.PlayerShootSound.Value)
+                PlaySound(AudioManager.inst.GetSound("boost"), 0.7f);
+
+            canShoot = false;
+
+            var currentModel = PlayerPlugin.CurrentModel(playerIndex);
+
+            if (currentModel == null || !currentModel.values.ContainsKey("Bullet Active") || !(bool)currentModel.values["Bullet Active"])
+            {
+                Debug.LogFormat("{0}Cannot create bullet because of the following reasons:\nCurrent Model is null = {1}\nCurrent Model does not contain Bullet Key = {2}\nBullet is not active = {1}",
+                    currentModel == null, currentModel != null && !currentModel.values.ContainsKey("Bullet Active"), currentModel != null && currentModel.values.ContainsKey("Bullet Active") && !(bool)currentModel.values["Bullet Active"]);
+                return;
+            }
+
+            var player = playerObjects["RB Parent"].gameObject;
+
+            int s = Mathf.Clamp(((Vector2Int)currentModel.values["Bullet Shape"]).x, 0, ObjectManager.inst.objectPrefabs.Count - 1);
+            int so = Mathf.Clamp(((Vector2Int)currentModel.values["Bullet Shape"]).y, 0, ObjectManager.inst.objectPrefabs[s].options.Count - 1);
+
+            var objcopy = ObjectManager.inst.objectPrefabs[s].options[so];
+            if (s == 4 || s == 6)
+            {
+                objcopy = ObjectManager.inst.objectPrefabs[0].options[0];
+            }
+
+            var pulse = Instantiate(objcopy);
+            pulse.transform.SetParent(ObjectManager.inst.objectParent.transform);
+            pulse.transform.localScale = new Vector3(((Vector2)currentModel.values["Bullet Start Scale"]).x, ((Vector2)currentModel.values["Bullet Start Scale"]).y, 1f);
+
+            var vec = new Vector3(((Vector2)currentModel.values["Bullet Origin"]).x, ((Vector2)currentModel.values["Bullet Origin"]).y, 0f);
+            if (rotateMode == RotateMode.FlipX && lastMovement.x < 0f)
+                vec.x = -vec.x;
+
+            pulse.transform.position = player.transform.position + vec;
+            pulse.transform.GetChild(0).localPosition = new Vector3(((Vector2)currentModel.values["Bullet Start Position"]).x, ((Vector2)currentModel.values["Bullet Start Position"]).y, (float)currentModel.values["Bullet Depth"]);
+            pulse.transform.GetChild(0).localRotation = Quaternion.Euler(new Vector3(0f, 0f, (float)currentModel.values["Bullet Start Rotation"]));
+
+            if (!PlayerPlugin.AllowPlayersToTakeBulletDamage.Value || !(bool)currentModel.values["Bullet Hurt Players"])
+            {
+                pulse.tag = "Helper";
+                pulse.transform.GetChild(0).tag = "Helper";
+            }
+
+            pulse.transform.GetChild(0).gameObject.name = "bullet (Player " + (playerIndex + 1).ToString() + ")";
+
+            float speed = Mathf.Clamp((float)currentModel.values["Bullet Speed Amount"], 0.001f, 20f) / PlayerExtensions.Pitch;
+            var b = pulse.AddComponent<Bullet>();
+            b.speed = speed;
+            b.player = this;
+            b.Assign();
+
+            pulse.transform.localRotation = player.transform.localRotation;
+
+            //Destroy
+            {
+                if (pulse.transform.GetChild(0).GetComponent<SelectObjectInEditor>())
+                {
+                    Destroy(pulse.transform.GetChild(0).GetComponent<SelectObjectInEditor>());
+                }
+                if (pulse.transform.GetChild(0).gameObject.GetComponentByName("RTObject"))
+                {
+                    Destroy(pulse.transform.GetChild(0).gameObject.GetComponentByName("RTObject"));
+                }
+            }
+
+            var obj = new PlayerObject("Bullet", pulse.transform.GetChild(0).gameObject);
+
+            MeshRenderer pulseRenderer = pulse.transform.GetChild(0).GetComponent<MeshRenderer>();
+            obj.values.Add("MeshRenderer", pulseRenderer);
+            obj.values.Add("Opacity", 0f);
+            obj.values.Add("ColorTween", 0f);
+            obj.values.Add("StartColor", (int)currentModel.values["Bullet Start Color"]);
+            obj.values.Add("EndColor", (int)currentModel.values["Bullet End Color"]);
+            obj.values.Add("StartCustomColor", (string)currentModel.values["Bullet Start Custom Color"]);
+            obj.values.Add("EndCustomColor", (string)currentModel.values["Bullet End Custom Color"]);
+
+            boosts.Add(obj);
+
+            pulseRenderer.enabled = true;
+            pulseRenderer.material = ((MeshRenderer)playerObjects["Head"].values["MeshRenderer"]).material;
+            pulseRenderer.material.shader = ((MeshRenderer)playerObjects["Head"].values["MeshRenderer"]).material.shader;
+            Color colorBase = ((MeshRenderer)playerObjects["Head"].values["MeshRenderer"]).material.color;
+
+            int easingPos = (int)currentModel.values["Bullet Easing Position"];
+            int easingSca = (int)currentModel.values["Bullet Easing Scale"];
+            int easingRot = (int)currentModel.values["Bullet Easing Rotation"];
+            int easingOpa = (int)currentModel.values["Bullet Easing Opacity"];
+            int easingCol = (int)currentModel.values["Bullet Easing Color"];
+
+            float posDuration = Mathf.Clamp((float)currentModel.values["Bullet Duration Position"], 0.001f, 20f) / PlayerExtensions.Pitch;
+            float scaDuration = Mathf.Clamp((float)currentModel.values["Bullet Duration Scale"], 0.001f, 20f) / PlayerExtensions.Pitch;
+            float rotDuration = Mathf.Clamp((float)currentModel.values["Bullet Duration Rotation"], 0.001f, 20f) / PlayerExtensions.Pitch;
+            float lifeTime = Mathf.Clamp((float)currentModel.values["Bullet Lifetime"], 0.001f, 20f) / PlayerExtensions.Pitch;
+
+            pulse.transform.GetChild(0).DOLocalMove(new Vector3(((Vector2)currentModel.values["Bullet End Position"]).x, ((Vector2)currentModel.values["Bullet End Position"]).y, (float)currentModel.values["Bullet Depth"]), posDuration).SetEase(DataManager.inst.AnimationList[easingPos].Animation);
+            pulse.transform.DOScale(new Vector3(((Vector2)currentModel.values["Bullet End Scale"]).x, ((Vector2)currentModel.values["Bullet End Scale"]).y, 1f), scaDuration).SetEase(DataManager.inst.AnimationList[easingSca].Animation);
+            pulse.transform.GetChild(0).DOLocalRotate(new Vector3(0f, 0f, (float)currentModel.values["Bullet End Rotation"]), rotDuration).SetEase(DataManager.inst.AnimationList[easingRot].Animation);
+
+            DOTween.To(delegate (float x)
+            {
+                obj.values["Opacity"] = x;
+            }, (float)currentModel.values["Bullet Start Opacity"], (float)currentModel.values["Bullet End Opacity"], posDuration).SetEase(DataManager.inst.AnimationList[easingOpa].Animation);
+            DOTween.To(delegate (float x)
+            {
+                obj.values["ColorTween"] = x;
+            }, 0f, 1f, posDuration).SetEase(DataManager.inst.AnimationList[easingCol].Animation);
+
+            StartCoroutine(CanShoot());
+
+            var tweener = DOTween.To(delegate (float x) { }, 1f, 1f, lifeTime).SetEase(DataManager.inst.AnimationList[easingOpa].Animation);
+
+            tweener.OnComplete(delegate ()
+            {
+                var tweenScale = pulse.transform.GetChild(0).DOScale(Vector3.zero, 0.2f).SetEase(DataManager.inst.AnimationList[2].Animation);
+                tweenScale.OnComplete(delegate ()
+                {
+                    Destroy(pulse);
+                    boosts.Remove(obj);
+                });
+            });
+        }
+
+        private IEnumerator CanShoot()
+        {
+            var currentModel = PlayerPlugin.CurrentModel(playerIndex);
+            if (currentModel != null)
+            {
+                var delay = (float)currentModel.values["Bullet Delay Amount"];
+                yield return new WaitForSeconds(delay);
+                canShoot = true;
+            }
+
+            yield break;
         }
 
         #endregion
