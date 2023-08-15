@@ -24,7 +24,12 @@ namespace CreativePlayers.Functions.Components
 				if (player.rotateMode != RTPlayer.RotateMode.FlipX)
 					target = leader.position + offset * leader.transform.right;
 				else
-					target = leader.position + -offset * leader.transform.right;
+				{
+					if (player.lastMovement.x > 0.1f)
+						target = leader.position + offset * leader.transform.right;
+					if (player.lastMovement.x < 0.1f)
+						target = leader.position + -offset * leader.transform.right;
+				}
 
 				float p = Time.deltaTime * 60f * pitch;
 				float po = 1f - Mathf.Pow(1f - Mathf.Clamp(positionOffset, 0.001f, 1f), p);
@@ -37,7 +42,12 @@ namespace CreativePlayers.Functions.Components
 						transform.rotation = Quaternion.Lerp(transform.rotation, Quaternion.Euler(0f, 0f, leader.transform.rotation.eulerAngles.z), ro);
 
 					if (scaleParent)
-						transform.localScale = Vector3.Lerp(transform.localScale, leader.localScale, so);
+                    {
+						if (gameObject.name.ToLower().Contains("tail") && player.tailMode == 1 && player.rotateMode == RTPlayer.RotateMode.RotateToDirection)
+							transform.localScale = Vector3.Lerp(transform.localScale, leader.parent.localScale, so);
+						else
+							transform.localScale = Vector3.Lerp(transform.localScale, leader.localScale, so);
+					}
 				}
 			}
 		}
