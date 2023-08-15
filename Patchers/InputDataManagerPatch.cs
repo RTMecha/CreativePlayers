@@ -56,6 +56,7 @@ namespace CreativePlayers.Patchers
 			{
 				__instance.StopControllerRumble(__0.index);
 				__0.GetRTPlayer().Actions = null;
+				__0.GetRTPlayer().faceController = null;
 				if (__0.GetRTPlayer().gameObject != null)
 				{
 					Destroy(__0.GetRTPlayer().gameObject);
