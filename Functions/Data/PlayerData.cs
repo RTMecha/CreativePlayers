@@ -21,9 +21,16 @@ namespace CreativePlayers.Functions.Data
                     Directory.CreateDirectory(RTFile.ApplicationDirectory + "beatmaps/players");
                 }
                 path = RTFile.ApplicationDirectory + "beatmaps/players/" + _name.ToLower().Replace(" ", "_") + ".lspl";
+                //int num = 0;
+                
+                //while (RTFile.FileExists(path))
+                //{
+                //    path = RTFile.ApplicationDirectory + "beatmaps/players/" + _name.ToLower().Replace(" ", "_") + "_" + num.ToString() + ".lspl";
+                //    num++;
+                //}
             }
 
-            Debug.LogFormat("{0}Saving {1} to {2}", PlayerPlugin.className, _name, path);
+            LogFormat("{0}Saving {1} to {2}", PlayerPlugin.className, _name, path);
 
             JSONNode jn = null;
 
@@ -52,6 +59,8 @@ namespace CreativePlayers.Functions.Data
                 jn = JSON.Parse("{}");
             }
 
+            #region Base
+
             jn["base"]["name"] = (string)_model.values["Base Name"];
             jn["base"]["id"] = (string)_model.values["Base ID"];
             jn["base"]["health"] = ((int)_model.values["Base Health"]).ToString();
@@ -66,27 +75,37 @@ namespace CreativePlayers.Functions.Data
             jn["base"]["collision_acc"] = ((bool)_model.values["Base Collision Accurate"]).ToString();
             jn["base"]["sprsneak"] = ((bool)_model.values["Base Sprint Sneak Active"]).ToString();
 
+            #endregion
+
+            #region Stretch
+
             jn["stretch"]["active"] = ((bool)_model.values["Stretch Active"]).ToString();
             jn["stretch"]["amount"] = ((float)_model.values["Stretch Amount"]).ToString();
             jn["stretch"]["easing"] = ((int)_model.values["Stretch Easing"]).ToString();
 
+            #endregion
+
+            #region Health
+
             jn["gui"]["health"]["active"] = ((bool)_model.values["GUI Health Active"]).ToString();
             jn["gui"]["health"]["mode"] = ((int)_model.values["GUI Health Mode"]).ToString();
 
+            #endregion
+
             #region Head
 
-            Debug.LogFormat("{0}Saving Head Shape", PlayerPlugin.className);
+            LogFormat("{0}Saving Head Shape", PlayerPlugin.className);
             if (((Vector2Int)_model.values["Head Shape"]).x != 0)
                 jn["head"]["s"] = ((Vector2Int)_model.values["Head Shape"]).x.ToString();
             if (((Vector2Int)_model.values["Head Shape"]).y != 0)
                 jn["head"]["so"] = ((Vector2Int)_model.values["Head Shape"]).y.ToString();
-            Debug.LogFormat("{0}Saving Head Position", PlayerPlugin.className);
+            LogFormat("{0}Saving Head Position", PlayerPlugin.className);
             jn["head"]["pos"]["x"] = ((Vector2)_model.values["Head Position"]).x.ToString();
             jn["head"]["pos"]["y"] = ((Vector2)_model.values["Head Position"]).y.ToString();
-            Debug.LogFormat("{0}Saving Head Scale", PlayerPlugin.className);
+            LogFormat("{0}Saving Head Scale", PlayerPlugin.className);
             jn["head"]["sca"]["x"] = ((Vector2)_model.values["Head Scale"]).x.ToString();
             jn["head"]["sca"]["y"] = ((Vector2)_model.values["Head Scale"]).y.ToString();
-            Debug.LogFormat("{0}Saving Head Rotation", PlayerPlugin.className);
+            LogFormat("{0}Saving Head Rotation", PlayerPlugin.className);
             jn["head"]["rot"]["x"] = ((float)_model.values["Head Rotation"]).ToString();
 
             jn["head"]["col"]["x"] = ((int)_model.values["Head Color"]).ToString();
@@ -96,23 +115,23 @@ namespace CreativePlayers.Functions.Data
             #endregion
 
             #region Head Trail
-            Debug.LogFormat("{0}Saving Head Trail Emitting", PlayerPlugin.className);
+            LogFormat("{0}Saving Head Trail Emitting", PlayerPlugin.className);
             jn["head"]["trail"]["em"] = ((bool)_model.values["Head Trail Emitting"]).ToString();
-            Debug.LogFormat("{0}Saving Head Trail Time", PlayerPlugin.className);
+            LogFormat("{0}Saving Head Trail Time", PlayerPlugin.className);
             jn["head"]["trail"]["t"] = ((float)_model.values["Head Trail Time"]).ToString();
-            Debug.LogFormat("{0}Saving Head Trail Start Width", PlayerPlugin.className);
+            LogFormat("{0}Saving Head Trail Start Width", PlayerPlugin.className);
             jn["head"]["trail"]["w"]["start"] = ((float)_model.values["Head Trail Start Width"]).ToString();
-            Debug.LogFormat("{0}Saving Head Trail End Width", PlayerPlugin.className);
+            LogFormat("{0}Saving Head Trail End Width", PlayerPlugin.className);
             jn["head"]["trail"]["w"]["end"] = ((float)_model.values["Head Trail End Width"]).ToString();
-            Debug.LogFormat("{0}Saving Head Trail Start Color", PlayerPlugin.className);
+            LogFormat("{0}Saving Head Trail Start Color", PlayerPlugin.className);
             jn["head"]["trail"]["c"]["start"] = ((int)_model.values["Head Trail Start Color"]).ToString();
-            Debug.LogFormat("{0}Saving Head Trail End Color", PlayerPlugin.className);
+            LogFormat("{0}Saving Head Trail End Color", PlayerPlugin.className);
             jn["head"]["trail"]["c"]["end"] = ((int)_model.values["Head Trail End Color"]).ToString();
-            Debug.LogFormat("{0}Saving Head Trail Start Opacity", PlayerPlugin.className);
+            LogFormat("{0}Saving Head Trail Start Opacity", PlayerPlugin.className);
             jn["head"]["trail"]["o"]["start"] = ((float)_model.values["Head Trail Start Opacity"]).ToString();
-            Debug.LogFormat("{0}Saving Head Trail End Opacity", PlayerPlugin.className);
+            LogFormat("{0}Saving Head Trail End Opacity", PlayerPlugin.className);
             jn["head"]["trail"]["o"]["end"] = ((float)_model.values["Head Trail End Opacity"]).ToString();
-            Debug.LogFormat("{0}Saving Head Trail Position Offset", PlayerPlugin.className);
+            LogFormat("{0}Saving Head Trail Position Offset", PlayerPlugin.className);
             jn["head"]["trail"]["pos"]["x"] = ((Vector2)_model.values["Head Trail Position Offset"]).x;
             jn["head"]["trail"]["pos"]["y"] = ((Vector2)_model.values["Head Trail Position Offset"]).y;
             #endregion
@@ -137,26 +156,30 @@ namespace CreativePlayers.Functions.Data
             jn["head"]["particles"]["trem"] = ((bool)_model.values["Head Particles Trail Emitting"]).ToString();
             #endregion
 
+            #region Face
+
             jn["face"]["position"]["x"] = ((Vector2)_model.values["Face Position"]).x.ToString();
             jn["face"]["position"]["y"] = ((Vector2)_model.values["Face Position"]).y.ToString();
             jn["face"]["con_active"] = ((bool)_model.values["Face Control Active"]).ToString();
 
+            #endregion
+
             #region Boost
 
-            Debug.LogFormat("{0}Saving Boost Active", PlayerPlugin.className);
+            LogFormat("{0}Saving Boost Active", PlayerPlugin.className);
             jn["boost"]["active"] = ((bool)_model.values["Boost Active"]).ToString();
-            Debug.LogFormat("{0}Saving Boost Shape", PlayerPlugin.className);
+            LogFormat("{0}Saving Boost Shape", PlayerPlugin.className);
             if (((Vector2Int)_model.values["Boost Shape"]).x != 0)
                 jn["boost"]["s"] = ((Vector2Int)_model.values["Boost Shape"]).x.ToString();
             if (((Vector2Int)_model.values["Boost Shape"]).y != 0)
                 jn["boost"]["so"] = ((Vector2Int)_model.values["Boost Shape"]).y.ToString();
-            Debug.LogFormat("{0}Saving Boost Position", PlayerPlugin.className);
+            LogFormat("{0}Saving Boost Position", PlayerPlugin.className);
             jn["boost"]["pos"]["x"] = ((Vector2)_model.values["Boost Position"]).x.ToString();
             jn["boost"]["pos"]["y"] = ((Vector2)_model.values["Boost Position"]).y.ToString();
-            Debug.LogFormat("{0}Saving Boost Scale", PlayerPlugin.className);
+            LogFormat("{0}Saving Boost Scale", PlayerPlugin.className);
             jn["boost"]["sca"]["x"] = ((Vector2)_model.values["Boost Scale"]).x.ToString();
             jn["boost"]["sca"]["y"] = ((Vector2)_model.values["Boost Scale"]).y.ToString();
-            Debug.LogFormat("{0}Saving Boost Rotation", PlayerPlugin.className);
+            LogFormat("{0}Saving Boost Rotation", PlayerPlugin.className);
             jn["boost"]["rot"]["x"] = ((float)_model.values["Boost Rotation"]).ToString();
 
             jn["boost"]["col"]["x"] = ((int)_model.values["Boost Color"]).ToString();
@@ -166,100 +189,102 @@ namespace CreativePlayers.Functions.Data
             #endregion
 
             #region Boost Trail
-            Debug.LogFormat("{0}Saving Boost Trail Emitting", PlayerPlugin.className);
+            LogFormat("{0}Saving Boost Trail Emitting", PlayerPlugin.className);
             jn["boost"]["trail"]["em"] = ((bool)_model.values["Boost Trail Emitting"]).ToString();
-            Debug.LogFormat("{0}Saving Boost Trail Time", PlayerPlugin.className);
+            LogFormat("{0}Saving Boost Trail Time", PlayerPlugin.className);
             jn["boost"]["trail"]["t"] = ((float)_model.values["Boost Trail Time"]).ToString();
-            Debug.LogFormat("{0}Saving Boost Trail Start Width", PlayerPlugin.className);
+            LogFormat("{0}Saving Boost Trail Start Width", PlayerPlugin.className);
             jn["boost"]["trail"]["w"]["start"] = ((float)_model.values["Boost Trail Start Width"]).ToString();
-            Debug.LogFormat("{0}Saving Boost Trail End Width", PlayerPlugin.className);
+            LogFormat("{0}Saving Boost Trail End Width", PlayerPlugin.className);
             jn["boost"]["trail"]["w"]["end"] = ((float)_model.values["Boost Trail End Width"]).ToString();
-            Debug.LogFormat("{0}Saving Boost Trail Start Color", PlayerPlugin.className);
+            LogFormat("{0}Saving Boost Trail Start Color", PlayerPlugin.className);
             jn["boost"]["trail"]["c"]["start"] = ((int)_model.values["Boost Trail Start Color"]).ToString();
-            Debug.LogFormat("{0}Saving Boost Trail End Color", PlayerPlugin.className);
+            LogFormat("{0}Saving Boost Trail End Color", PlayerPlugin.className);
             jn["boost"]["trail"]["c"]["end"] = ((int)_model.values["Boost Trail End Color"]).ToString();
-            Debug.LogFormat("{0}Saving Boost Trail Start Opacity", PlayerPlugin.className);
+            LogFormat("{0}Saving Boost Trail Start Opacity", PlayerPlugin.className);
             jn["boost"]["trail"]["o"]["start"] = ((float)_model.values["Boost Trail Start Opacity"]).ToString();
-            Debug.LogFormat("{0}Saving Boost Trail End Opacity", PlayerPlugin.className);
+            LogFormat("{0}Saving Boost Trail End Opacity", PlayerPlugin.className);
             jn["boost"]["trail"]["o"]["end"] = ((float)_model.values["Boost Trail End Opacity"]).ToString();
             #endregion
 
             #region Boost Particles
-            Debug.LogFormat("{0}Saving Boost Particles Emitting", PlayerPlugin.className);
+            LogFormat("{0}Saving Boost Particles Emitting", PlayerPlugin.className);
             jn["boost"]["particles"]["em"] = ((bool)_model.values["Boost Particles Emitting"]).ToString();
-            Debug.LogFormat("{0}Saving Boost Particles Shape", PlayerPlugin.className);
+            LogFormat("{0}Saving Boost Particles Shape", PlayerPlugin.className);
             if (((Vector2Int)_model.values["Boost Particles Shape"]).x != 0)
                 jn["boost"]["particles"]["s"] = ((Vector2Int)_model.values["Boost Particles Shape"]).x.ToString();
             if (((Vector2Int)_model.values["Boost Particles Shape"]).y != 0)
                 jn["boost"]["particles"]["so"] = ((Vector2Int)_model.values["Boost Particles Shape"]).y.ToString();
-            Debug.LogFormat("{0}Saving Boost Particles Color", PlayerPlugin.className);
+            LogFormat("{0}Saving Boost Particles Color", PlayerPlugin.className);
             jn["boost"]["particles"]["col"] = ((int)_model.values["Boost Particles Color"]).ToString();
-            Debug.LogFormat("{0}Saving Boost Particles Start Opacity", PlayerPlugin.className);
+            LogFormat("{0}Saving Boost Particles Start Opacity", PlayerPlugin.className);
             jn["boost"]["particles"]["opa"]["start"] = ((float)_model.values["Boost Particles Start Opacity"]).ToString();
-            Debug.LogFormat("{0}Saving Boost Particles End Opacity", PlayerPlugin.className);
+            LogFormat("{0}Saving Boost Particles End Opacity", PlayerPlugin.className);
             jn["boost"]["particles"]["opa"]["end"] = ((float)_model.values["Boost Particles End Opacity"]).ToString();
-            Debug.LogFormat("{0}Saving Boost Particles Start Scale", PlayerPlugin.className);
+            LogFormat("{0}Saving Boost Particles Start Scale", PlayerPlugin.className);
             jn["boost"]["particles"]["sca"]["start"] = ((float)_model.values["Boost Particles Start Scale"]).ToString();
-            Debug.LogFormat("{0}Saving Boost Particles End Scale", PlayerPlugin.className);
+            LogFormat("{0}Saving Boost Particles End Scale", PlayerPlugin.className);
             jn["boost"]["particles"]["sca"]["end"] = ((float)_model.values["Boost Particles End Scale"]).ToString();
-            Debug.LogFormat("{0}Saving Boost Particles Rotation", PlayerPlugin.className);
+            LogFormat("{0}Saving Boost Particles Rotation", PlayerPlugin.className);
             jn["boost"]["particles"]["rot"] = ((float)_model.values["Boost Particles Rotation"]).ToString();
-            Debug.LogFormat("{0}Saving Boost Particles Lifetime", PlayerPlugin.className);
+            LogFormat("{0}Saving Boost Particles Lifetime", PlayerPlugin.className);
             jn["boost"]["particles"]["lt"] = ((float)_model.values["Boost Particles Lifetime"]).ToString();
-            Debug.LogFormat("{0}Saving Boost Particles Speed", PlayerPlugin.className);
+            LogFormat("{0}Saving Boost Particles Speed", PlayerPlugin.className);
             jn["boost"]["particles"]["sp"] = ((float)_model.values["Boost Particles Speed"]).ToString();
-            Debug.LogFormat("{0}Saving Boost Particles Amount", PlayerPlugin.className);
+            LogFormat("{0}Saving Boost Particles Amount", PlayerPlugin.className);
             jn["boost"]["particles"]["am"] = ((int)_model.values["Boost Particles Amount"]).ToString();
-            Debug.LogFormat("{0}Saving Boost Particles Force X", PlayerPlugin.className);
+            LogFormat("{0}Saving Boost Particles Force X", PlayerPlugin.className);
             jn["boost"]["particles"]["frc"]["x"] = ((Vector2)_model.values["Boost Particles Force"]).x.ToString();
-            Debug.LogFormat("{0}Saving Boost Particles Force Y", PlayerPlugin.className);
+            LogFormat("{0}Saving Boost Particles Force Y", PlayerPlugin.className);
             jn["boost"]["particles"]["frc"]["y"] = ((Vector2)_model.values["Boost Particles Force"]).y.ToString();
-            Debug.LogFormat("{0}Saving Boost Particles Trail Emitting", PlayerPlugin.className);
+            LogFormat("{0}Saving Boost Particles Trail Emitting", PlayerPlugin.className);
             jn["boost"]["particles"]["trem"] = ((bool)_model.values["Boost Particles Trail Emitting"]).ToString();
             #endregion
 
             #region Pulse
 
-            Debug.LogFormat("{0}Saving Pulse Active", PlayerPlugin.className);
+            LogFormat("{0}Saving Pulse Active", PlayerPlugin.className);
             jn["pulse"]["active"] = ((bool)_model.values["Pulse Active"]).ToString();
 
-            Debug.LogFormat("{0}Saving Pulse Shape", PlayerPlugin.className);
+            LogFormat("{0}Saving Pulse Shape", PlayerPlugin.className);
             if (((Vector2Int)_model.values["Pulse Shape"]).x != 0)
                 jn["pulse"]["s"] = ((Vector2Int)_model.values["Pulse Shape"]).x.ToString();
             if (((Vector2Int)_model.values["Pulse Shape"]).y != 0)
                 jn["pulse"]["so"] = ((Vector2Int)_model.values["Pulse Shape"]).y.ToString();
 
-            Debug.LogFormat("{0}Saving Pulse Rotate to Head", PlayerPlugin.className);
+            LogFormat("{0}Saving Pulse Rotate to Head", PlayerPlugin.className);
             jn["pulse"]["rothead"] = ((bool)_model.values["Pulse Rotate to Head"]).ToString();
 
-            Debug.LogFormat("{0}Saving Pulse Color", PlayerPlugin.className);
+            LogFormat("{0}Saving Pulse Color", PlayerPlugin.className);
             jn["pulse"]["col"]["start"] = ((int)_model.values["Pulse Start Color"]).ToString();
+            jn["pulse"]["col"]["starthex"] = (string)_model.values["Pulse Start Custom Color"];
             jn["pulse"]["col"]["end"] = ((int)_model.values["Pulse End Color"]).ToString();
+            jn["pulse"]["col"]["endhex"] = (string)_model.values["Pulse End Custom Color"];
             jn["pulse"]["col"]["easing"] = ((int)_model.values["Pulse Easing Color"]).ToString();
 
-            Debug.LogFormat("{0}Saving Pulse Opacity", PlayerPlugin.className);
+            LogFormat("{0}Saving Pulse Opacity", PlayerPlugin.className);
             jn["pulse"]["opa"]["start"] = ((float)_model.values["Pulse Start Opacity"]).ToString();
             jn["pulse"]["opa"]["end"] = ((float)_model.values["Pulse End Opacity"]).ToString();
             jn["pulse"]["opa"]["easing"] = ((int)_model.values["Pulse Easing Opacity"]).ToString();
 
-            Debug.LogFormat("{0}Saving Pulse Depth", PlayerPlugin.className);
+            LogFormat("{0}Saving Pulse Depth", PlayerPlugin.className);
             jn["pulse"]["d"] = ((float)_model.values["Pulse Depth"]).ToString();
 
-            Debug.LogFormat("{0}Saving Pulse Position", PlayerPlugin.className);
+            LogFormat("{0}Saving Pulse Position", PlayerPlugin.className);
             jn["pulse"]["pos"]["start"]["x"] = ((Vector2)_model.values["Pulse Start Position"]).x.ToString();
             jn["pulse"]["pos"]["start"]["y"] = ((Vector2)_model.values["Pulse Start Position"]).y.ToString();
             jn["pulse"]["pos"]["end"]["x"] = ((Vector2)_model.values["Pulse End Position"]).x.ToString();
             jn["pulse"]["pos"]["end"]["y"] = ((Vector2)_model.values["Pulse End Position"]).y.ToString();
             jn["pulse"]["pos"]["easing"] = ((int)_model.values["Pulse Easing Position"]).ToString();
 
-            Debug.LogFormat("{0}Saving Pulse Scale", PlayerPlugin.className);
+            LogFormat("{0}Saving Pulse Scale", PlayerPlugin.className);
             jn["pulse"]["sca"]["start"]["x"] = ((Vector2)_model.values["Pulse Start Scale"]).x.ToString();
             jn["pulse"]["sca"]["start"]["y"] = ((Vector2)_model.values["Pulse Start Scale"]).y.ToString();
             jn["pulse"]["sca"]["end"]["x"] = ((Vector2)_model.values["Pulse End Scale"]).x.ToString();
             jn["pulse"]["sca"]["end"]["y"] = ((Vector2)_model.values["Pulse End Scale"]).y.ToString();
             jn["pulse"]["sca"]["easing"] = ((int)_model.values["Pulse Easing Scale"]).ToString();
 
-            Debug.LogFormat("{0}Saving Pulse Rotation", PlayerPlugin.className);
+            LogFormat("{0}Saving Pulse Rotation", PlayerPlugin.className);
             jn["pulse"]["rot"]["start"] = ((float)_model.values["Pulse Start Rotation"]).ToString();
             jn["pulse"]["rot"]["end"] = ((float)_model.values["Pulse End Rotation"]).ToString();
             jn["pulse"]["rot"]["easing"] = ((int)_model.values["Pulse Easing Rotation"]).ToString();
@@ -268,25 +293,96 @@ namespace CreativePlayers.Functions.Data
 
             #endregion
 
+            #region Bullet
+
+            LogFormat("{0}Saving Bullet Active", PlayerPlugin.className);
+            jn["bullet"]["active"] = ((bool)_model.values["Bullet Active"]).ToString();
+
+            LogFormat("{0}Saving Bullet Speed Amount", PlayerPlugin.className);
+            jn["bullet"]["speed"] = ((float)_model.values["Bullet Speed Amount"]).ToString();
+
+            LogFormat("{0}Saving Bullet Lifetime", PlayerPlugin.className);
+            jn["bullet"]["lt"] = ((float)_model.values["Bullet Lifetime"]).ToString();
+
+            LogFormat("{0}Saving Bullet Delay Amount", PlayerPlugin.className);
+            jn["bullet"]["delay"] = ((float)_model.values["Bullet Delay Amount"]).ToString();
+
+            LogFormat("{0}Saving Bullet Constant", PlayerPlugin.className);
+            jn["bullet"]["constant"] = ((bool)_model.values["Bullet Constant"]).ToString();
+
+            LogFormat("{0}Saving Bullet Hurt Players", PlayerPlugin.className);
+            jn["bullet"]["hit"] = ((bool)_model.values["Bullet Hurt Players"]).ToString();
+
+            LogFormat("{0}Saving Bullet Origin", PlayerPlugin.className);
+            jn["bullet"]["o"]["x"] = ((Vector2)_model.values["Bullet Origin"]).x.ToString();
+            jn["bullet"]["o"]["y"] = ((Vector2)_model.values["Bullet Origin"]).y.ToString();
+
+            LogFormat("{0}Saving Bullet Shape", PlayerPlugin.className);
+            if (((Vector2Int)_model.values["Bullet Shape"]).x != 0)
+                jn["bullet"]["s"] = ((Vector2Int)_model.values["Bullet Shape"]).x.ToString();
+            if (((Vector2Int)_model.values["Bullet Shape"]).y != 0)
+                jn["bullet"]["so"] = ((Vector2Int)_model.values["Bullet Shape"]).y.ToString();
+
+            LogFormat("{0}Saving Bullet Color", PlayerPlugin.className);
+            jn["bullet"]["col"]["start"] = ((int)_model.values["Bullet Start Color"]).ToString();
+            jn["bullet"]["col"]["starthex"] = (string)_model.values["Bullet Start Custom Color"];
+            jn["bullet"]["col"]["end"] = ((int)_model.values["Bullet End Color"]).ToString();
+            jn["bullet"]["col"]["endhex"] = (string)_model.values["Bullet End Custom Color"];
+            jn["bullet"]["col"]["easing"] = ((int)_model.values["Bullet Easing Color"]).ToString();
+            jn["bullet"]["col"]["dur"] = ((float)_model.values["Bullet Duration Color"]).ToString();
+
+            LogFormat("{0}Saving Bullet Opacity", PlayerPlugin.className);
+            jn["bullet"]["opa"]["start"] = ((float)_model.values["Bullet Start Opacity"]).ToString();
+            jn["bullet"]["opa"]["end"] = ((float)_model.values["Bullet End Opacity"]).ToString();
+            jn["bullet"]["opa"]["easing"] = ((int)_model.values["Bullet Easing Opacity"]).ToString();
+            jn["bullet"]["opa"]["dur"] = ((float)_model.values["Bullet Duration Opacity"]).ToString();
+
+            LogFormat("{0}Saving Bullet Depth", PlayerPlugin.className);
+            jn["bullet"]["d"] = ((float)_model.values["Bullet Depth"]).ToString();
+
+            LogFormat("{0}Saving Bullet Position", PlayerPlugin.className);
+            jn["bullet"]["pos"]["start"]["x"] = ((Vector2)_model.values["Bullet Start Position"]).x.ToString();
+            jn["bullet"]["pos"]["start"]["y"] = ((Vector2)_model.values["Bullet Start Position"]).y.ToString();
+            jn["bullet"]["pos"]["end"]["x"] = ((Vector2)_model.values["Bullet End Position"]).x.ToString();
+            jn["bullet"]["pos"]["end"]["y"] = ((Vector2)_model.values["Bullet End Position"]).y.ToString();
+            jn["bullet"]["pos"]["easing"] = ((int)_model.values["Bullet Easing Position"]).ToString();
+            jn["bullet"]["pos"]["dur"] = ((float)_model.values["Bullet Duration Position"]).ToString();
+
+            LogFormat("{0}Saving Bullet Scale", PlayerPlugin.className);
+            jn["bullet"]["sca"]["start"]["x"] = ((Vector2)_model.values["Bullet Start Scale"]).x.ToString();
+            jn["bullet"]["sca"]["start"]["y"] = ((Vector2)_model.values["Bullet Start Scale"]).y.ToString();
+            jn["bullet"]["sca"]["end"]["x"] = ((Vector2)_model.values["Bullet End Scale"]).x.ToString();
+            jn["bullet"]["sca"]["end"]["y"] = ((Vector2)_model.values["Bullet End Scale"]).y.ToString();
+            jn["bullet"]["sca"]["easing"] = ((int)_model.values["Bullet Easing Scale"]).ToString();
+            jn["bullet"]["sca"]["dur"] = ((float)_model.values["Bullet Duration Scale"]).ToString();
+
+            LogFormat("{0}Saving Bullet Rotation", PlayerPlugin.className);
+            jn["bullet"]["rot"]["start"] = ((float)_model.values["Bullet Start Rotation"]).ToString();
+            jn["bullet"]["rot"]["end"] = ((float)_model.values["Bullet End Rotation"]).ToString();
+            jn["bullet"]["rot"]["easing"] = ((int)_model.values["Bullet Easing Rotation"]).ToString();
+            jn["bullet"]["rot"]["dur"] = ((float)_model.values["Bullet Duration Rotation"]).ToString();
+
+            #endregion
+
             #region Tail
 
-            Debug.LogFormat("{0}Saving Tail Base", PlayerPlugin.className);
+            LogFormat("{0}Saving Tail Base", PlayerPlugin.className);
             jn["tail_base"]["distance"] = ((float)_model.values["Tail Base Distance"]).ToString();
             jn["tail_base"]["mode"] = ((int)_model.values["Tail Base Mode"]).ToString();
             jn["tail_base"]["grows"] = ((bool)_model.values["Tail Base Grows"]).ToString();
 
-            Debug.LogFormat("{0}Saving Tail Boost Active", PlayerPlugin.className);
+            LogFormat("{0}Saving Tail Boost Active", PlayerPlugin.className);
             jn["tail_boost"]["active"] = ((bool)_model.values["Tail Boost Active"]).ToString();
 
-            Debug.LogFormat("{0}Saving Tail Boost Shape", PlayerPlugin.className);
+            LogFormat("{0}Saving Tail Boost Shape", PlayerPlugin.className);
             if (((Vector2Int)_model.values["Tail Boost Shape"]).x != 0)
                 jn["tail_boost"]["s"] = ((Vector2Int)_model.values["Tail Boost Shape"]).x.ToString();
             if (((Vector2Int)_model.values["Tail Boost Shape"]).y != 0)
                 jn["tail_boost"]["so"] = ((Vector2Int)_model.values["Tail Boost Shape"]).y.ToString();
-            Debug.LogFormat("{0}Saving Tail Boost Position", PlayerPlugin.className);
+            LogFormat("{0}Saving Tail Boost Position", PlayerPlugin.className);
             jn["tail_boost"]["pos"]["x"] = ((Vector2)_model.values["Tail Boost Position"]).x.ToString();
             jn["tail_boost"]["pos"]["y"] = ((Vector2)_model.values["Tail Boost Position"]).y.ToString();
-            Debug.LogFormat("{0}Saving Tail Boost Scale", PlayerPlugin.className);
+            LogFormat("{0}Saving Tail Boost Scale", PlayerPlugin.className);
             jn["tail_boost"]["sca"]["x"] = ((Vector2)_model.values["Tail Boost Scale"]).x.ToString();
             jn["tail_boost"]["sca"]["y"] = ((Vector2)_model.values["Tail Boost Scale"]).y.ToString();
             jn["tail_boost"]["rot"]["x"] = ((float)_model.values["Tail Boost Rotation"]).ToString();
@@ -297,42 +393,42 @@ namespace CreativePlayers.Functions.Data
 
             for (int i = 1; i < 4; i++)
             {
-                Debug.LogFormat("{0}Saving Tail {1} Active", PlayerPlugin.className, i);
+                LogFormat("{0}Saving Tail {1} Active", PlayerPlugin.className, i);
                 jn["tail"][i - 1]["active"] = ((bool)_model.values[string.Format("Tail {0} Active", i)]).ToString();
-                Debug.LogFormat("{0}Saving Tail {1} Shape", PlayerPlugin.className, i);
+                LogFormat("{0}Saving Tail {1} Shape", PlayerPlugin.className, i);
                 if (((Vector2Int)_model.values[string.Format("Tail {0} Shape", i)]).x != 0)
                     jn["tail"][i - 1]["s"] = ((Vector2Int)_model.values[string.Format("Tail {0} Shape", i)]).x.ToString();
                 if (((Vector2Int)_model.values[string.Format("Tail {0} Shape", i)]).y != 0)
                     jn["tail"][i - 1]["so"] = ((Vector2Int)_model.values[string.Format("Tail {0} Shape", i)]).y.ToString();
-                Debug.LogFormat("{0}Saving Tail {1} Position", PlayerPlugin.className, i);
+                LogFormat("{0}Saving Tail {1} Position", PlayerPlugin.className, i);
                 jn["tail"][i - 1]["pos"]["x"] = ((Vector2)_model.values[string.Format("Tail {0} Position", i)]).x.ToString();
                 jn["tail"][i - 1]["pos"]["y"] = ((Vector2)_model.values[string.Format("Tail {0} Position", i)]).y.ToString();
-                Debug.LogFormat("{0}Saving Tail {1} Scale", PlayerPlugin.className, i);
+                LogFormat("{0}Saving Tail {1} Scale", PlayerPlugin.className, i);
                 jn["tail"][i - 1]["sca"]["x"] = ((Vector2)_model.values[string.Format("Tail {0} Scale", i)]).x.ToString();
                 jn["tail"][i - 1]["sca"]["y"] = ((Vector2)_model.values[string.Format("Tail {0} Scale", i)]).y.ToString();
-                Debug.LogFormat("{0}Saving Tail {1} Rotation", PlayerPlugin.className, i);
+                LogFormat("{0}Saving Tail {1} Rotation", PlayerPlugin.className, i);
                 jn["tail"][i - 1]["rot"]["x"] = ((float)_model.values[string.Format("Tail {0} Rotation", i)]).ToString();
                 jn["tail"][i - 1]["col"]["x"] = ((int)_model.values[string.Format("Tail {0} Color", i)]).ToString();
                 jn["tail"][i - 1]["col"]["hex"] = (string)_model.values[string.Format("Tail {0} Custom Color", i)];
                 jn["tail"][i - 1]["opa"]["x"] = ((float)_model.values[string.Format("Tail {0} Opacity", i)]).ToString();
 
-                Debug.LogFormat("{0}Saving Tail {1} Trail Emitting", PlayerPlugin.className, i);
+                LogFormat("{0}Saving Tail {1} Trail Emitting", PlayerPlugin.className, i);
                 jn["tail"][i - 1]["trail"]["em"] = ((bool)_model.values[string.Format("Tail {0} Trail Emitting", i)]).ToString();
-                Debug.LogFormat("{0}Saving Tail {1} Trail Time", PlayerPlugin.className, i);
+                LogFormat("{0}Saving Tail {1} Trail Time", PlayerPlugin.className, i);
                 jn["tail"][i - 1]["trail"]["t"] = ((float)_model.values[string.Format("Tail {0} Trail Time", i)]).ToString();
-                Debug.LogFormat("{0}Saving Tail {1} Trail Start Width", PlayerPlugin.className, i);
+                LogFormat("{0}Saving Tail {1} Trail Start Width", PlayerPlugin.className, i);
                 jn["tail"][i - 1]["trail"]["w"]["start"] = ((float)_model.values[string.Format("Tail {0} Trail Start Width", i)]).ToString();
-                Debug.LogFormat("{0}Saving Tail {1} Trail End Width", PlayerPlugin.className, i);
+                LogFormat("{0}Saving Tail {1} Trail End Width", PlayerPlugin.className, i);
                 jn["tail"][i - 1]["trail"]["w"]["end"] = ((float)_model.values[string.Format("Tail {0} Trail End Width", i)]).ToString();
-                Debug.LogFormat("{0}Saving Tail {1} Trail Start Color", PlayerPlugin.className, i);
+                LogFormat("{0}Saving Tail {1} Trail Start Color", PlayerPlugin.className, i);
                 jn["tail"][i - 1]["trail"]["c"]["start"] = ((int)_model.values[string.Format("Tail {0} Trail Start Color", i)]).ToString();
                 jn["tail"][i - 1]["trail"]["c"]["start_hex"] = (string)_model.values[string.Format("Tail {0} Trail Start Custom Color", i)];
-                Debug.LogFormat("{0}Saving Tail {1} Trail End Color", PlayerPlugin.className, i);
+                LogFormat("{0}Saving Tail {1} Trail End Color", PlayerPlugin.className, i);
                 jn["tail"][i - 1]["trail"]["c"]["end"] = ((int)_model.values[string.Format("Tail {0} Trail End Color", i)]).ToString();
                 jn["tail"][i - 1]["trail"]["c"]["end_hex"] = (string)_model.values[string.Format("Tail {0} Trail End Custom Color", i)];
-                Debug.LogFormat("{0}Saving Tail {1} Trail Start Opacity", PlayerPlugin.className, i);
+                LogFormat("{0}Saving Tail {1} Trail Start Opacity", PlayerPlugin.className, i);
                 jn["tail"][i - 1]["trail"]["o"]["start"] = ((float)_model.values[string.Format("Tail {0} Trail Start Opacity", i)]).ToString();
-                Debug.LogFormat("{0}Saving Tail {1} Trail End Opacity", PlayerPlugin.className, i);
+                LogFormat("{0}Saving Tail {1} Trail End Opacity", PlayerPlugin.className, i);
                 jn["tail"][i - 1]["trail"]["o"]["end"] = ((float)_model.values[string.Format("Tail {0} Trail End Opacity", i)]).ToString();
 
                 jn["tail"][i - 1]["particles"]["em"] = ((bool)_model.values[string.Format("Tail {0} Particles Emitting", i)]).ToString();
@@ -405,7 +501,7 @@ namespace CreativePlayers.Functions.Data
                 }
             #endregion
 
-            Debug.LogFormat("{0}Done!", PlayerPlugin.className);
+            LogFormat("{0}Done!", PlayerPlugin.className);
             return jn;
         }
 
@@ -417,7 +513,7 @@ namespace CreativePlayers.Functions.Data
                 path = RTFile.ApplicationDirectory + "beatmaps/players/" + _name.ToLower().Replace(" ", "") + ".lspl";
             }
 
-            Debug.LogFormat("{0}Loading player model file from {1}", PlayerPlugin.className, path);
+            LogFormat("{0}Loading player model file from {1}", PlayerPlugin.className, path);
 
             if (RTFile.FileExists(path))
             {
@@ -526,7 +622,7 @@ namespace CreativePlayers.Functions.Data
 
             #region Head
 
-            Debug.LogFormat("{0}Loading Head Shape", PlayerPlugin.className);
+            LogFormat("{0}Loading Head Shape", PlayerPlugin.className);
             int headS = 0;
             int headSO = 0;
             if (!string.IsNullOrEmpty(jn["head"]["s"]))
@@ -539,11 +635,11 @@ namespace CreativePlayers.Functions.Data
             }
 
             model.values["Head Shape"] = new Vector2Int(headS, headSO);
-            Debug.LogFormat("{0}Loading Head Position", PlayerPlugin.className);
+            LogFormat("{0}Loading Head Position", PlayerPlugin.className);
             model.values["Head Position"] = new Vector2(float.Parse(jn["head"]["pos"]["x"]), float.Parse(jn["head"]["pos"]["y"]));
-            Debug.LogFormat("{0}Loading Head Scale", PlayerPlugin.className);
+            LogFormat("{0}Loading Head Scale", PlayerPlugin.className);
             model.values["Head Scale"] = new Vector2(float.Parse(jn["head"]["sca"]["x"]), float.Parse(jn["head"]["sca"]["y"]));
-            Debug.LogFormat("{0}Loading Head Rotation", PlayerPlugin.className);
+            LogFormat("{0}Loading Head Rotation", PlayerPlugin.className);
             model.values["Head Rotation"] = float.Parse(jn["head"]["rot"]["x"]);
 
             if (jn["head"]["col"] != null && !string.IsNullOrEmpty(jn["head"]["col"]["x"]))
@@ -562,24 +658,24 @@ namespace CreativePlayers.Functions.Data
             #endregion
 
             #region Head Trail
-            Debug.LogFormat("{0}Loading Head Trail Emitting", PlayerPlugin.className);
+            LogFormat("{0}Loading Head Trail Emitting", PlayerPlugin.className);
             model.values["Head Trail Emitting"] = bool.Parse(jn["head"]["trail"]["em"]);
-            Debug.LogFormat("{0}Loading Head Trail Time", PlayerPlugin.className);
+            LogFormat("{0}Loading Head Trail Time", PlayerPlugin.className);
             model.values["Head Trail Time"] = float.Parse(jn["head"]["trail"]["t"]);
-            Debug.LogFormat("{0}Loading Head Trail Start Width", PlayerPlugin.className);
+            LogFormat("{0}Loading Head Trail Start Width", PlayerPlugin.className);
             model.values["Head Trail Start Width"] = float.Parse(jn["head"]["trail"]["w"]["start"]);
-            Debug.LogFormat("{0}Loading Head Trail End Width", PlayerPlugin.className);
+            LogFormat("{0}Loading Head Trail End Width", PlayerPlugin.className);
             model.values["Head Trail End Width"] = float.Parse(jn["head"]["trail"]["w"]["end"]);
-            Debug.LogFormat("{0}Loading Head Trail Start Color", PlayerPlugin.className);
+            LogFormat("{0}Loading Head Trail Start Color", PlayerPlugin.className);
             model.values["Head Trail Start Color"] = int.Parse(jn["head"]["trail"]["c"]["start"]);
-            Debug.LogFormat("{0}Loading Head Trail End Color", PlayerPlugin.className);
+            LogFormat("{0}Loading Head Trail End Color", PlayerPlugin.className);
             model.values["Head Trail End Color"] = int.Parse(jn["head"]["trail"]["c"]["end"]);
-            Debug.LogFormat("{0}Loading Head Trail Start Opacity", PlayerPlugin.className);
+            LogFormat("{0}Loading Head Trail Start Opacity", PlayerPlugin.className);
             model.values["Head Trail Start Opacity"] = float.Parse(jn["head"]["trail"]["o"]["start"]);
-            Debug.LogFormat("{0}Loading Head Trail End Opacity", PlayerPlugin.className);
+            LogFormat("{0}Loading Head Trail End Opacity", PlayerPlugin.className);
             model.values["Head Trail End Opacity"] = float.Parse(jn["head"]["trail"]["o"]["end"]);
 
-            Debug.LogFormat("{0}Loading Head Trail Position Offset", PlayerPlugin.className);
+            LogFormat("{0}Loading Head Trail Position Offset", PlayerPlugin.className);
             float x = 0f;
             float y = 0f;
             if (!string.IsNullOrEmpty(jn["head"]["trail"]["pos"]["x"]))
@@ -595,10 +691,10 @@ namespace CreativePlayers.Functions.Data
             #endregion
 
             #region Head Particles
-            Debug.LogFormat("{0}Loading Head Particles Emitting", PlayerPlugin.className);
+            LogFormat("{0}Loading Head Particles Emitting", PlayerPlugin.className);
             model.values["Head Particles Emitting"] = bool.Parse(jn["head"]["particles"]["em"]);
 
-            Debug.LogFormat("{0}Loading Head Particles Shape", PlayerPlugin.className);
+            LogFormat("{0}Loading Head Particles Shape", PlayerPlugin.className);
             int headPS = 0;
             int headPSO = 0;
             if (!string.IsNullOrEmpty(jn["head"]["particles"]["s"]))
@@ -611,29 +707,31 @@ namespace CreativePlayers.Functions.Data
             }
 
             model.values["Head Particles Shape"] = new Vector2Int(headPS, headPSO);
-            Debug.LogFormat("{0}Loading Head Particles Color", PlayerPlugin.className);
+            LogFormat("{0}Loading Head Particles Color", PlayerPlugin.className);
             model.values["Head Particles Color"] = int.Parse(jn["head"]["particles"]["col"]);
-            Debug.LogFormat("{0}Loading Head Particles Start Opacity", PlayerPlugin.className);
+            LogFormat("{0}Loading Head Particles Start Opacity", PlayerPlugin.className);
             model.values["Head Particles Start Opacity"] = float.Parse(jn["head"]["particles"]["opa"]["start"]);
-            Debug.LogFormat("{0}Loading Head Particles End Opacity", PlayerPlugin.className);
+            LogFormat("{0}Loading Head Particles End Opacity", PlayerPlugin.className);
             model.values["Head Particles End Opacity"] = float.Parse(jn["head"]["particles"]["opa"]["end"]);
-            Debug.LogFormat("{0}Loading Head Particles Start Scale", PlayerPlugin.className);
+            LogFormat("{0}Loading Head Particles Start Scale", PlayerPlugin.className);
             model.values["Head Particles Start Scale"] = float.Parse(jn["head"]["particles"]["sca"]["start"]);
-            Debug.LogFormat("{0}Loading Head Particles End Scale", PlayerPlugin.className);
+            LogFormat("{0}Loading Head Particles End Scale", PlayerPlugin.className);
             model.values["Head Particles End Scale"] = float.Parse(jn["head"]["particles"]["sca"]["end"]);
-            Debug.LogFormat("{0}Loading Head Particles Rotation", PlayerPlugin.className);
+            LogFormat("{0}Loading Head Particles Rotation", PlayerPlugin.className);
             model.values["Head Particles Rotation"] = float.Parse(jn["head"]["particles"]["rot"]);
-            Debug.LogFormat("{0}Loading Head Particles Lifetime", PlayerPlugin.className);
+            LogFormat("{0}Loading Head Particles Lifetime", PlayerPlugin.className);
             model.values["Head Particles Lifetime"] = float.Parse(jn["head"]["particles"]["lt"]);
-            Debug.LogFormat("{0}Loading Head Particles Speed", PlayerPlugin.className);
+            LogFormat("{0}Loading Head Particles Speed", PlayerPlugin.className);
             model.values["Head Particles Speed"] = float.Parse(jn["head"]["particles"]["sp"]);
-            Debug.LogFormat("{0}Loading Head Particles Amount", PlayerPlugin.className);
+            LogFormat("{0}Loading Head Particles Amount", PlayerPlugin.className);
             model.values["Head Particles Amount"] = float.Parse(jn["head"]["particles"]["am"]);
-            Debug.LogFormat("{0}Loading Head Particles Force", PlayerPlugin.className);
+            LogFormat("{0}Loading Head Particles Force", PlayerPlugin.className);
             model.values["Head Particles Force"] = new Vector2(float.Parse(jn["head"]["particles"]["frc"]["x"]), float.Parse(jn["head"]["particles"]["frc"]["y"]));
-            Debug.LogFormat("{0}Loading Head Particles Trail Emitting", PlayerPlugin.className);
+            LogFormat("{0}Loading Head Particles Trail Emitting", PlayerPlugin.className);
             model.values["Head Particles Trail Emitting"] = bool.Parse(jn["head"]["particles"]["trem"]);
             #endregion
+
+            #region Face
 
             if (jn["face"] != null)
             {
@@ -648,14 +746,16 @@ namespace CreativePlayers.Functions.Data
                 }
             }
 
+            #endregion
+
             #region Boost
 
-            Debug.LogFormat("{0}Loading Boost Active", PlayerPlugin.className);
+            LogFormat("{0}Loading Boost Active", PlayerPlugin.className);
             if (!string.IsNullOrEmpty(jn["boost"]["active"]))
             {
                 model.values["Boost Active"] = bool.Parse(jn["boost"]["active"]);
             }
-            Debug.LogFormat("{0}Loading Boost Shape", PlayerPlugin.className);
+            LogFormat("{0}Loading Boost Shape", PlayerPlugin.className);
             int boostS = 0;
             int boostSO = 0;
             if (!string.IsNullOrEmpty(jn["boost"]["s"]))
@@ -667,11 +767,11 @@ namespace CreativePlayers.Functions.Data
                 boostSO = int.Parse(jn["boost"]["so"]);
             }
             model.values["Boost Shape"] = new Vector2Int(boostS, boostSO);
-            Debug.LogFormat("{0}Loading Boost Position", PlayerPlugin.className);
+            LogFormat("{0}Loading Boost Position", PlayerPlugin.className);
             model.values["Boost Position"] = new Vector2(float.Parse(jn["boost"]["pos"]["x"]), float.Parse(jn["boost"]["pos"]["y"]));
-            Debug.LogFormat("{0}Loading Boost Scale", PlayerPlugin.className);
+            LogFormat("{0}Loading Boost Scale", PlayerPlugin.className);
             model.values["Boost Scale"] = new Vector2(float.Parse(jn["boost"]["sca"]["x"]), float.Parse(jn["boost"]["sca"]["y"]));
-            Debug.LogFormat("{0}Loading Boost Rotation", PlayerPlugin.className);
+            LogFormat("{0}Loading Boost Rotation", PlayerPlugin.className);
             model.values["Boost Rotation"] = float.Parse(jn["boost"]["rot"]["x"]);
 
             if (jn["boost"]["col"] != null && !string.IsNullOrEmpty(jn["boost"]["col"]["x"]))
@@ -690,29 +790,29 @@ namespace CreativePlayers.Functions.Data
             #endregion
 
             #region Boost Trail
-            Debug.LogFormat("{0}Loading Boost Trail Emitting", PlayerPlugin.className);
+            LogFormat("{0}Loading Boost Trail Emitting", PlayerPlugin.className);
             model.values["Boost Trail Emitting"] = bool.Parse(jn["boost"]["trail"]["em"]);
-            Debug.LogFormat("{0}Loading Boost Trail Time", PlayerPlugin.className);
+            LogFormat("{0}Loading Boost Trail Time", PlayerPlugin.className);
             model.values["Boost Trail Time"] = float.Parse(jn["boost"]["trail"]["t"]);
-            Debug.LogFormat("{0}Loading Boost Trail Start Width", PlayerPlugin.className);
+            LogFormat("{0}Loading Boost Trail Start Width", PlayerPlugin.className);
             model.values["Boost Trail Start Width"] = float.Parse(jn["boost"]["trail"]["w"]["start"]);
-            Debug.LogFormat("{0}Loading Boost Trail End Width", PlayerPlugin.className);
+            LogFormat("{0}Loading Boost Trail End Width", PlayerPlugin.className);
             model.values["Boost Trail End Width"] = float.Parse(jn["boost"]["trail"]["w"]["end"]);
-            Debug.LogFormat("{0}Loading Boost Trail Start Color", PlayerPlugin.className);
+            LogFormat("{0}Loading Boost Trail Start Color", PlayerPlugin.className);
             model.values["Boost Trail Start Color"] = int.Parse(jn["boost"]["trail"]["c"]["start"]);
-            Debug.LogFormat("{0}Loading Boost Trail End Color", PlayerPlugin.className);
+            LogFormat("{0}Loading Boost Trail End Color", PlayerPlugin.className);
             model.values["Boost Trail End Color"] = int.Parse(jn["boost"]["trail"]["c"]["end"]);
-            Debug.LogFormat("{0}Loading Boost Trail Start Opacity", PlayerPlugin.className);
+            LogFormat("{0}Loading Boost Trail Start Opacity", PlayerPlugin.className);
             model.values["Boost Trail Start Opacity"] = float.Parse(jn["boost"]["trail"]["o"]["start"]);
-            Debug.LogFormat("{0}Loading Boost Trail End Opacity", PlayerPlugin.className);
+            LogFormat("{0}Loading Boost Trail End Opacity", PlayerPlugin.className);
             model.values["Boost Trail End Opacity"] = float.Parse(jn["boost"]["trail"]["o"]["end"]);
             #endregion
 
             #region Boost particles
-            Debug.LogFormat("{0}Loading Boost Particles Emitting", PlayerPlugin.className);
+            LogFormat("{0}Loading Boost Particles Emitting", PlayerPlugin.className);
             model.values["Boost Particles Emitting"] = bool.Parse(jn["boost"]["particles"]["em"]);
 
-            Debug.LogFormat("{0}Loading Boost Particles Shape", PlayerPlugin.className);
+            LogFormat("{0}Loading Boost Particles Shape", PlayerPlugin.className);
             int boostPS = 0;
             int boostPSO = 0;
             if (!string.IsNullOrEmpty(jn["boost"]["particles"]["s"]))
@@ -725,37 +825,37 @@ namespace CreativePlayers.Functions.Data
             }
 
             model.values["Boost Particles Shape"] = new Vector2Int(boostPS, boostPSO);
-            Debug.LogFormat("{0}Loading Boost Particles Color", PlayerPlugin.className);
+            LogFormat("{0}Loading Boost Particles Color", PlayerPlugin.className);
             model.values["Boost Particles Color"] = int.Parse(jn["boost"]["particles"]["col"]);
-            Debug.LogFormat("{0}Loading Boost Particles Start Opacity", PlayerPlugin.className);
+            LogFormat("{0}Loading Boost Particles Start Opacity", PlayerPlugin.className);
             model.values["Boost Particles Start Opacity"] = float.Parse(jn["boost"]["particles"]["opa"]["start"]);
-            Debug.LogFormat("{0}Loading Boost Particles End Opacity", PlayerPlugin.className);
+            LogFormat("{0}Loading Boost Particles End Opacity", PlayerPlugin.className);
             model.values["Boost Particles End Opacity"] = float.Parse(jn["boost"]["particles"]["opa"]["end"]);
-            Debug.LogFormat("{0}Loading Boost Particles Start Scale", PlayerPlugin.className);
+            LogFormat("{0}Loading Boost Particles Start Scale", PlayerPlugin.className);
             model.values["Boost Particles Start Scale"] = float.Parse(jn["boost"]["particles"]["sca"]["start"]);
-            Debug.LogFormat("{0}Loading Boost Particles End Scale", PlayerPlugin.className);
+            LogFormat("{0}Loading Boost Particles End Scale", PlayerPlugin.className);
             model.values["Boost Particles End Scale"] = float.Parse(jn["boost"]["particles"]["sca"]["end"]);
-            Debug.LogFormat("{0}Loading Boost Particles Rotation", PlayerPlugin.className);
+            LogFormat("{0}Loading Boost Particles Rotation", PlayerPlugin.className);
             model.values["Boost Particles Rotation"] = float.Parse(jn["boost"]["particles"]["rot"]);
-            Debug.LogFormat("{0}Loading Boost Particles Lifetime", PlayerPlugin.className);
+            LogFormat("{0}Loading Boost Particles Lifetime", PlayerPlugin.className);
             model.values["Boost Particles Lifetime"] = float.Parse(jn["boost"]["particles"]["lt"]);
-            Debug.LogFormat("{0}Loading Boost Particles Speed", PlayerPlugin.className);
+            LogFormat("{0}Loading Boost Particles Speed", PlayerPlugin.className);
             model.values["Boost Particles Speed"] = float.Parse(jn["boost"]["particles"]["sp"]);
-            Debug.LogFormat("{0}Loading Boost Particles Amount", PlayerPlugin.className);
+            LogFormat("{0}Loading Boost Particles Amount", PlayerPlugin.className);
             model.values["Boost Particles Amount"] = int.Parse(jn["boost"]["particles"]["am"]);
-            Debug.LogFormat("{0}Loading Boost Particles Force", PlayerPlugin.className);
+            LogFormat("{0}Loading Boost Particles Force", PlayerPlugin.className);
             model.values["Boost Particles Force"] = new Vector2(float.Parse(jn["boost"]["particles"]["frc"]["x"]), float.Parse(jn["boost"]["particles"]["frc"]["y"]));
-            Debug.LogFormat("{0}Loading Boost Particles Trail Emitting", PlayerPlugin.className);
+            LogFormat("{0}Loading Boost Particles Trail Emitting", PlayerPlugin.className);
             model.values["Boost Particles Trail Emitting"] = bool.Parse(jn["boost"]["particles"]["trem"]);
             #endregion
 
             #region Pulse
 
-            Debug.LogFormat("{0}Loading Pulse Active", PlayerPlugin.className);
+            LogFormat("{0}Loading Pulse Active", PlayerPlugin.className);
             if (!string.IsNullOrEmpty(jn["pulse"]["active"]))
                 model.values["Pulse Active"] = bool.Parse(jn["pulse"]["active"]);
 
-            Debug.LogFormat("{0}Loading Pulse Shape", PlayerPlugin.className);
+            LogFormat("{0}Loading Pulse Shape", PlayerPlugin.className);
             int pulseS = 0;
             int pulseSO = 0;
             if (!string.IsNullOrEmpty(jn["pulse"]["s"]))
@@ -769,11 +869,11 @@ namespace CreativePlayers.Functions.Data
 
             model.values["Pulse Shape"] = new Vector2Int(pulseS, pulseSO);
 
-            Debug.LogFormat("{0}Loading Pulse Rotate to Head", PlayerPlugin.className);
+            LogFormat("{0}Loading Pulse Rotate to Head", PlayerPlugin.className);
             if (!string.IsNullOrEmpty(jn["pulse"]["rothead"]))
                 model.values["Pulse Rotate to Head"] = bool.Parse(jn["pulse"]["rothead"]);
 
-            Debug.LogFormat("{0}Loading Pulse Color", PlayerPlugin.className);
+            LogFormat("{0}Loading Pulse Color", PlayerPlugin.className);
             if (!string.IsNullOrEmpty(jn["pulse"]["col"]["start"]))
                 model.values["Pulse Start Color"] = int.Parse(jn["pulse"]["col"]["start"]);
             if (!string.IsNullOrEmpty(jn["pulse"]["col"]["end"]))
@@ -781,7 +881,7 @@ namespace CreativePlayers.Functions.Data
             if (!string.IsNullOrEmpty(jn["pulse"]["col"]["easing"]))
                 model.values["Pulse Easing Color"] = int.Parse(jn["pulse"]["col"]["easing"]);
 
-            Debug.LogFormat("{0}Loading Pulse Opacity", PlayerPlugin.className);
+            LogFormat("{0}Loading Pulse Opacity", PlayerPlugin.className);
             if (!string.IsNullOrEmpty(jn["pulse"]["opa"]["start"]))
                 model.values["Pulse Start Opacity"] = float.Parse(jn["pulse"]["opa"]["start"]);
             if (!string.IsNullOrEmpty(jn["pulse"]["opa"]["end"]))
@@ -789,11 +889,11 @@ namespace CreativePlayers.Functions.Data
             if (!string.IsNullOrEmpty(jn["pulse"]["opa"]["easing"]))
                 model.values["Pulse Easing Opacity"] = int.Parse(jn["pulse"]["opa"]["easing"]);
 
-            Debug.LogFormat("{0}Loading Pulse Depth", PlayerPlugin.className);
+            LogFormat("{0}Loading Pulse Depth", PlayerPlugin.className);
             if (!string.IsNullOrEmpty(jn["pulse"]["d"]))
                 model.values["Pulse Depth"] = float.Parse(jn["pulse"]["d"]);
 
-            Debug.LogFormat("{0}Loading Pulse Position", PlayerPlugin.className);
+            LogFormat("{0}Loading Pulse Position", PlayerPlugin.className);
             if (!string.IsNullOrEmpty(jn["pulse"]["pos"]["start"]["x"]) && !string.IsNullOrEmpty(jn["pulse"]["pos"]["start"]["y"]))
                 model.values["Pulse Start Position"] = new Vector2(float.Parse(jn["pulse"]["pos"]["start"]["x"]), float.Parse(jn["pulse"]["pos"]["start"]["y"]));
             if (!string.IsNullOrEmpty(jn["pulse"]["pos"]["end"]["x"]) && !string.IsNullOrEmpty(jn["pulse"]["pos"]["end"]["y"]))
@@ -801,7 +901,7 @@ namespace CreativePlayers.Functions.Data
             if (!string.IsNullOrEmpty(jn["pulse"]["pos"]["easing"]))
                 model.values["Pulse Easing Position"] = int.Parse(jn["pulse"]["pos"]["easing"]);
 
-            Debug.LogFormat("{0}Loading Pulse Scale", PlayerPlugin.className);
+            LogFormat("{0}Loading Pulse Scale", PlayerPlugin.className);
             if (!string.IsNullOrEmpty(jn["pulse"]["sca"]["start"]["x"]) && !string.IsNullOrEmpty(jn["pulse"]["sca"]["start"]["y"]))
                 model.values["Pulse Start Scale"] = new Vector2(float.Parse(jn["pulse"]["sca"]["start"]["x"]), float.Parse(jn["pulse"]["sca"]["start"]["y"]));
             if (!string.IsNullOrEmpty(jn["pulse"]["sca"]["end"]["x"]) && !string.IsNullOrEmpty(jn["pulse"]["sca"]["end"]["y"]))
@@ -809,7 +909,7 @@ namespace CreativePlayers.Functions.Data
             if (!string.IsNullOrEmpty(jn["pulse"]["sca"]["easing"]))
                 model.values["Pulse Easing Scale"] = int.Parse(jn["pulse"]["sca"]["easing"]);
 
-            Debug.LogFormat("{0}Loading Pulse Rotation", PlayerPlugin.className);
+            LogFormat("{0}Loading Pulse Rotation", PlayerPlugin.className);
             if (!string.IsNullOrEmpty(jn["pulse"]["rot"]["start"]))
                 model.values["Pulse Start Rotation"] = float.Parse(jn["pulse"]["rot"]["start"]);
             if (!string.IsNullOrEmpty(jn["pulse"]["rot"]["end"]))
@@ -817,27 +917,131 @@ namespace CreativePlayers.Functions.Data
             if (!string.IsNullOrEmpty(jn["pulse"]["rot"]["easing"]))
                 model.values["Pulse Easing Rotation"] = int.Parse(jn["pulse"]["rot"]["easing"]);
 
-            Debug.LogFormat("{0}Loading Pulse Duration", PlayerPlugin.className);
+            LogFormat("{0}Loading Pulse Duration", PlayerPlugin.className);
             if (!string.IsNullOrEmpty(jn["pulse"]["lt"]))
                 model.values["Pulse Duration"] = float.Parse(jn["pulse"]["lt"]);
 
             #endregion
 
+            #region Bullet
+
+            if (jn["bullet"] != null)
+            {
+                LogFormat("{0}Loading Bullet Active", PlayerPlugin.className);
+                if (!string.IsNullOrEmpty(jn["bullet"]["active"]))
+                    model.values["Bullet Active"] = bool.Parse(jn["bullet"]["active"]);
+
+                LogFormat("{0}Loading Bullet Speed Amount", PlayerPlugin.className);
+                if (!string.IsNullOrEmpty(jn["bullet"]["speed"]))
+                    model.values["Bullet Speed Amount"] = float.Parse(jn["bullet"]["speed"]);
+
+                LogFormat("{0}Loading Bullet Lifetime", PlayerPlugin.className);
+                if (!string.IsNullOrEmpty(jn["bullet"]["lt"]))
+                    model.values["Bullet Lifetime"] = float.Parse(jn["bullet"]["lt"]);
+
+                LogFormat("{0}Loading Bullet Delay Amount", PlayerPlugin.className);
+                if (!string.IsNullOrEmpty(jn["bullet"]["delay"]))
+                    model.values["Bullet Delay Amount"] = float.Parse(jn["bullet"]["delay"]);
+
+                LogFormat("{0}Loading Bullet Constant", PlayerPlugin.className);
+                if (!string.IsNullOrEmpty(jn["bullet"]["constant"]))
+                    model.values["Bullet Constant"] = bool.Parse(jn["bullet"]["constant"]);
+
+                LogFormat("{0}Loading Bullet Hurt Players", PlayerPlugin.className);
+                if (!string.IsNullOrEmpty(jn["bullet"]["hit"]))
+                    model.values["Bullet Hurt Players"] = bool.Parse(jn["bullet"]["hit"]);
+
+                LogFormat("{0}Loading Bullet Origin", PlayerPlugin.className);
+                if (jn["bullet"]["o"] != null && !string.IsNullOrEmpty(jn["bullet"]["o"]["x"]) && !string.IsNullOrEmpty(jn["bullet"]["o"]["y"]))
+                    model.values["Bullet Origin"] = new Vector2(float.Parse(jn["bullet"]["o"]["x"]), float.Parse(jn["bullet"]["o"]["y"]));
+
+                LogFormat("{0}Loading Bullet Shape", PlayerPlugin.className);
+                int bulletS = 0;
+                int bulletSO = 0;
+                if (!string.IsNullOrEmpty(jn["bullet"]["s"]))
+                {
+                    bulletS = int.Parse(jn["bullet"]["s"]);
+                }
+                if (!string.IsNullOrEmpty(jn["bullet"]["so"]))
+                {
+                    bulletSO = int.Parse(jn["bullet"]["so"]);
+                }
+
+                model.values["Bullet Shape"] = new Vector2Int(bulletS, bulletSO);
+
+                LogFormat("{0}Loading Bullet Color", PlayerPlugin.className);
+                if (!string.IsNullOrEmpty(jn["bullet"]["col"]["start"]))
+                    model.values["Bullet Start Color"] = int.Parse(jn["bullet"]["col"]["start"]);
+                if (!string.IsNullOrEmpty(jn["bullet"]["col"]["end"]))
+                    model.values["Bullet End Color"] = int.Parse(jn["bullet"]["col"]["end"]);
+                if (!string.IsNullOrEmpty(jn["bullet"]["col"]["easing"]))
+                    model.values["Bullet Easing Color"] = int.Parse(jn["bullet"]["col"]["easing"]);
+                if (!string.IsNullOrEmpty(jn["bullet"]["col"]["dur"]))
+                    model.values["Bullet Duration Color"] = float.Parse(jn["bullet"]["col"]["dur"]);
+
+                LogFormat("{0}Loading Bullet Opacity", PlayerPlugin.className);
+                if (!string.IsNullOrEmpty(jn["bullet"]["opa"]["start"]))
+                    model.values["Bullet Start Opacity"] = float.Parse(jn["bullet"]["opa"]["start"]);
+                if (!string.IsNullOrEmpty(jn["bullet"]["opa"]["end"]))
+                    model.values["Bullet End Opacity"] = float.Parse(jn["bullet"]["opa"]["end"]);
+                if (!string.IsNullOrEmpty(jn["bullet"]["opa"]["easing"]))
+                    model.values["Bullet Easing Opacity"] = int.Parse(jn["bullet"]["opa"]["easing"]);
+                if (!string.IsNullOrEmpty(jn["bullet"]["opa"]["dur"]))
+                    model.values["Bullet Duration Opacity"] = float.Parse(jn["bullet"]["opa"]["dur"]);
+
+                LogFormat("{0}Loading Bullet Depth", PlayerPlugin.className);
+                if (!string.IsNullOrEmpty(jn["bullet"]["d"]))
+                    model.values["Bullet Depth"] = float.Parse(jn["bullet"]["d"]);
+
+                LogFormat("{0}Loading Bullet Position", PlayerPlugin.className);
+                if (!string.IsNullOrEmpty(jn["bullet"]["pos"]["start"]["x"]) && !string.IsNullOrEmpty(jn["bullet"]["pos"]["start"]["y"]))
+                    model.values["Bullet Start Position"] = new Vector2(float.Parse(jn["bullet"]["pos"]["start"]["x"]), float.Parse(jn["bullet"]["pos"]["start"]["y"]));
+                if (!string.IsNullOrEmpty(jn["bullet"]["pos"]["end"]["x"]) && !string.IsNullOrEmpty(jn["bullet"]["pos"]["end"]["y"]))
+                    model.values["Bullet End Position"] = new Vector2(float.Parse(jn["bullet"]["pos"]["end"]["x"]), float.Parse(jn["bullet"]["pos"]["end"]["y"]));
+                if (!string.IsNullOrEmpty(jn["bullet"]["pos"]["easing"]))
+                    model.values["Bullet Easing Position"] = int.Parse(jn["bullet"]["pos"]["easing"]);
+                if (!string.IsNullOrEmpty(jn["bullet"]["pos"]["dur"]))
+                    model.values["Bullet Duration Position"] = float.Parse(jn["bullet"]["pos"]["dur"]);
+
+                LogFormat("{0}Loading Bullet Scale", PlayerPlugin.className);
+                if (!string.IsNullOrEmpty(jn["bullet"]["sca"]["start"]["x"]) && !string.IsNullOrEmpty(jn["bullet"]["sca"]["start"]["y"]))
+                    model.values["Bullet Start Scale"] = new Vector2(float.Parse(jn["bullet"]["sca"]["start"]["x"]), float.Parse(jn["bullet"]["sca"]["start"]["y"]));
+                if (!string.IsNullOrEmpty(jn["bullet"]["sca"]["end"]["x"]) && !string.IsNullOrEmpty(jn["bullet"]["sca"]["end"]["y"]))
+                    model.values["Bullet End Scale"] = new Vector2(float.Parse(jn["bullet"]["sca"]["end"]["x"]), float.Parse(jn["bullet"]["sca"]["end"]["y"]));
+                if (!string.IsNullOrEmpty(jn["bullet"]["sca"]["easing"]))
+                    model.values["Bullet Easing Scale"] = int.Parse(jn["bullet"]["sca"]["easing"]);
+                if (!string.IsNullOrEmpty(jn["bullet"]["sca"]["dur"]))
+                    model.values["Bullet Duration Scale"] = float.Parse(jn["bullet"]["sca"]["dur"]);
+
+                LogFormat("{0}Loading Bullet Rotation", PlayerPlugin.className);
+                if (!string.IsNullOrEmpty(jn["bullet"]["rot"]["start"]))
+                    model.values["Bullet Start Rotation"] = float.Parse(jn["bullet"]["rot"]["start"]);
+                if (!string.IsNullOrEmpty(jn["bullet"]["rot"]["end"]))
+                    model.values["Bullet End Rotation"] = float.Parse(jn["bullet"]["rot"]["end"]);
+                if (!string.IsNullOrEmpty(jn["bullet"]["rot"]["easing"]))
+                    model.values["Bullet Easing Rotation"] = int.Parse(jn["bullet"]["rot"]["easing"]);
+                if (!string.IsNullOrEmpty(jn["bullet"]["rot"]["dur"]))
+                    model.values["Bullet Duration Rotation"] = float.Parse(jn["bullet"]["rot"]["dur"]);
+            }
+
+            #endregion
+
             #region Tail
-            Debug.LogFormat("{0}Loading Tail Base Distance", PlayerPlugin.className);
+
+            LogFormat("{0}Loading Tail Base Distance", PlayerPlugin.className);
             model.values["Tail Base Distance"] = float.Parse(jn["tail_base"]["distance"]);
-            Debug.LogFormat("{0}Loading Tail Base Mode", PlayerPlugin.className);
+            LogFormat("{0}Loading Tail Base Mode", PlayerPlugin.className);
             model.values["Tail Base Mode"] = int.Parse(jn["tail_base"]["mode"]);
 
             if (!string.IsNullOrEmpty(jn["tail_base"]["grows"]))
             {
-                Debug.LogFormat("{0}Loading Tail Base Grows", PlayerPlugin.className);
+                LogFormat("{0}Loading Tail Base Grows", PlayerPlugin.className);
                 model.values["Tail Base Grows"] = bool.Parse(jn["tail_base"]["grows"]);
             }
 
             if (!string.IsNullOrEmpty(jn["tail_boost"]["active"]))
             {
-                Debug.LogFormat("{0}Loading Tail Base Mode", PlayerPlugin.className);
+                LogFormat("{0}Loading Tail Base Mode", PlayerPlugin.className);
                 model.values["Tail Boost Active"] = bool.Parse(jn["tail_boost"]["active"]);
             }
 
@@ -855,19 +1059,19 @@ namespace CreativePlayers.Functions.Data
 
             if (!string.IsNullOrEmpty(jn["tail_boost"]["pos"]["x"]) && !string.IsNullOrEmpty(jn["tail_boost"]["pos"]["y"]))
             {
-                Debug.LogFormat("{0}Loading Tail Boost Position", PlayerPlugin.className);
+                LogFormat("{0}Loading Tail Boost Position", PlayerPlugin.className);
                 model.values["Tail Boost Position"] = new Vector2(float.Parse(jn["tail_boost"]["pos"]["x"]), float.Parse(jn["tail_boost"]["pos"]["y"]));
             }
 
             if (!string.IsNullOrEmpty(jn["tail_boost"]["sca"]["x"]) && !string.IsNullOrEmpty(jn["tail_boost"]["sca"]["y"]))
             {
-                Debug.LogFormat("{0}Loading Tail Boost Scale", PlayerPlugin.className);
+                LogFormat("{0}Loading Tail Boost Scale", PlayerPlugin.className);
                 model.values["Tail Boost Scale"] = new Vector2(float.Parse(jn["tail_boost"]["sca"]["x"]), float.Parse(jn["tail_boost"]["sca"]["y"]));
             }
 
             if (!string.IsNullOrEmpty(jn["tail_boost"]["rot"]["x"]))
             {
-                Debug.LogFormat("{0}Loading Tail Base Mode", PlayerPlugin.className);
+                LogFormat("{0}Loading Tail Base Mode", PlayerPlugin.className);
                 model.values["Tail Boost Rotation"] = float.Parse(jn["tail_boost"]["rot"]["x"]);
             }
 
@@ -888,10 +1092,10 @@ namespace CreativePlayers.Functions.Data
             {
                 if (!string.IsNullOrEmpty(jn["tail"][i - 1]["active"]))
                 {
-                    Debug.LogFormat("{0}Loading Tail {1} Active", PlayerPlugin.className, i);
+                    LogFormat("{0}Loading Tail {1} Active", PlayerPlugin.className, i);
                     model.values[string.Format("Tail {0} Active", i)] = bool.Parse(jn["tail"][i - 1]["active"]);
                 }
-                Debug.LogFormat("{0}Loading Tail {1} Shape", PlayerPlugin.className, i);
+                LogFormat("{0}Loading Tail {1} Shape", PlayerPlugin.className, i);
                 int tailS = 0;
                 int tailSO = 0;
                 if (!string.IsNullOrEmpty(jn["tail"][i - 1]["s"]))
@@ -903,11 +1107,11 @@ namespace CreativePlayers.Functions.Data
                     tailSO = int.Parse(jn["tail"][i - 1]["so"]);
                 }
                 model.values[string.Format("Tail {0} Shape", i)] = new Vector2Int(tailS, tailSO);
-                Debug.LogFormat("{0}Loading Tail {1} Position", PlayerPlugin.className, i);
+                LogFormat("{0}Loading Tail {1} Position", PlayerPlugin.className, i);
                 model.values[string.Format("Tail {0} Position", i)] = new Vector2(float.Parse(jn["tail"][i - 1]["pos"]["x"]), float.Parse(jn["tail"][i - 1]["pos"]["y"]));
-                Debug.LogFormat("{0}Loading Tail {1} Scale", PlayerPlugin.className, i);
+                LogFormat("{0}Loading Tail {1} Scale", PlayerPlugin.className, i);
                 model.values[string.Format("Tail {0} Scale", i)] = new Vector2(float.Parse(jn["tail"][i - 1]["sca"]["x"]), float.Parse(jn["tail"][i - 1]["sca"]["y"]));
-                Debug.LogFormat("{0}Loading Tail {1} Rotation", PlayerPlugin.className, i);
+                LogFormat("{0}Loading Tail {1} Rotation", PlayerPlugin.className, i);
                 model.values[string.Format("Tail {0} Rotation", i)] = float.Parse(jn["tail"][i - 1]["rot"]["x"]);
 
                 if (jn["tail"][i - 1]["col"] != null && !string.IsNullOrEmpty(jn["tail"][i - 1]["col"]["x"]))
@@ -923,13 +1127,13 @@ namespace CreativePlayers.Functions.Data
                     model.values[string.Format("Tail {0} Opacity", i)] = float.Parse(jn["tail"][i - 1]["opa"]["x"]);
                 }
 
-                Debug.LogFormat("{0}Loading Tail {1} Trail Emitting", PlayerPlugin.className, i);
+                LogFormat("{0}Loading Tail {1} Trail Emitting", PlayerPlugin.className, i);
                 model.values[string.Format("Tail {0} Trail Emitting", i)] = bool.Parse(jn["tail"][i - 1]["trail"]["em"]);
-                Debug.LogFormat("{0}Loading Tail {1} Trail Time", PlayerPlugin.className, i);
+                LogFormat("{0}Loading Tail {1} Trail Time", PlayerPlugin.className, i);
                 model.values[string.Format("Tail {0} Trail Time", i)] = float.Parse(jn["tail"][i - 1]["trail"]["t"]);
-                Debug.LogFormat("{0}Loading Tail {1} Trail Start Width", PlayerPlugin.className, i);
+                LogFormat("{0}Loading Tail {1} Trail Start Width", PlayerPlugin.className, i);
                 model.values[string.Format("Tail {0} Trail Start Width", i)] = float.Parse(jn["tail"][i - 1]["trail"]["w"]["start"]);
-                Debug.LogFormat("{0}Loading Tail {1} Trail End Width", PlayerPlugin.className, i);
+                LogFormat("{0}Loading Tail {1} Trail End Width", PlayerPlugin.className, i);
                 model.values[string.Format("Tail {0} Trail End Width", i)] = float.Parse(jn["tail"][i - 1]["trail"]["w"]["end"]);
 
                 if (!string.IsNullOrEmpty(jn["tail"][i - 1]["trail"]["c"]["start_hex"]))
@@ -937,7 +1141,7 @@ namespace CreativePlayers.Functions.Data
                     model.values[string.Format("Tail {0} Trail Start Custom Color", i)] = (string)jn["tail"][i - 1]["trail"]["c"]["start_hex"];
                 }
 
-                Debug.LogFormat("{0}Loading Tail {1} Trail Start Color", PlayerPlugin.className, i);
+                LogFormat("{0}Loading Tail {1} Trail Start Color", PlayerPlugin.className, i);
                 model.values[string.Format("Tail {0} Trail Start Color", i)] = int.Parse(jn["tail"][i - 1]["trail"]["c"]["start"]);
 
                 if (!string.IsNullOrEmpty(jn["tail"][i - 1]["trail"]["c"]["end_hex"]))
@@ -945,17 +1149,17 @@ namespace CreativePlayers.Functions.Data
                     model.values[string.Format("Tail {0} Trail End Custom Color", i)] = (string)jn["tail"][i - 1]["trail"]["c"]["end_hex"];
                 }
 
-                Debug.LogFormat("{0}Loading Tail {1} Trail End Color", PlayerPlugin.className, i);
+                LogFormat("{0}Loading Tail {1} Trail End Color", PlayerPlugin.className, i);
                 model.values[string.Format("Tail {0} Trail End Color", i)] = int.Parse(jn["tail"][i - 1]["trail"]["c"]["end"]);
-                Debug.LogFormat("{0}Loading Tail {1} Trail Start Opacity", PlayerPlugin.className, i);
+                LogFormat("{0}Loading Tail {1} Trail Start Opacity", PlayerPlugin.className, i);
                 model.values[string.Format("Tail {0} Trail Start Opacity", i)] = float.Parse(jn["tail"][i - 1]["trail"]["o"]["start"]);
-                Debug.LogFormat("{0}Loading Tail {1} Trail End Opacity", PlayerPlugin.className, i);
+                LogFormat("{0}Loading Tail {1} Trail End Opacity", PlayerPlugin.className, i);
                 model.values[string.Format("Tail {0} Trail End Opacity", i)] = float.Parse(jn["tail"][i - 1]["trail"]["o"]["end"]);
 
-                Debug.LogFormat("{0}Loading Tail {1} Particles Emitting", PlayerPlugin.className, i);
+                LogFormat("{0}Loading Tail {1} Particles Emitting", PlayerPlugin.className, i);
                 model.values[string.Format("Tail {0} Particles Emitting", i)] = bool.Parse(jn["tail"][i - 1]["particles"]["em"]);
 
-                Debug.LogFormat("{0}Loading Tail {1} Particles Shape", PlayerPlugin.className, i);
+                LogFormat("{0}Loading Tail {1} Particles Shape", PlayerPlugin.className, i);
                 int tailPS = 0;
                 int tailPSO = 0;
                 if (!string.IsNullOrEmpty(jn["tail"][i - 1]["particles"]["s"]))
@@ -968,35 +1172,37 @@ namespace CreativePlayers.Functions.Data
                 }
 
                 model.values[string.Format("Tail {0} Particles Shape", i)] = new Vector2Int(tailPS, tailPSO);
-                Debug.LogFormat("{0}Loading Tail {1} Particles Color", PlayerPlugin.className, i);
+                LogFormat("{0}Loading Tail {1} Particles Color", PlayerPlugin.className, i);
                 model.values[string.Format("Tail {0} Particles Color", i)] = int.Parse(jn["tail"][i - 1]["particles"]["col"]);
                 if (!string.IsNullOrEmpty(jn["tail"][i - 1]["particles"]["col_hex"]))
                     model.values[string.Format("Tail {0} Particles Custom Color", i)] = (string)jn["tail"][i - 1]["particles"]["col_hex"];
 
-                Debug.LogFormat("{0}Loading Tail {1} Particles Start Opacity", PlayerPlugin.className, i);
+                LogFormat("{0}Loading Tail {1} Particles Start Opacity", PlayerPlugin.className, i);
                 model.values[string.Format("Tail {0} Particles Start Opacity", i)] = float.Parse(jn["tail"][i - 1]["particles"]["opa"]["start"]);
-                Debug.LogFormat("{0}Loading Tail {1} Particles End Opacity", PlayerPlugin.className, i);
+                LogFormat("{0}Loading Tail {1} Particles End Opacity", PlayerPlugin.className, i);
                 model.values[string.Format("Tail {0} Particles End Opacity", i)] = float.Parse(jn["tail"][i - 1]["particles"]["opa"]["end"]);
-                Debug.LogFormat("{0}Loading Tail {1} Particles Start Scale", PlayerPlugin.className, i);
+                LogFormat("{0}Loading Tail {1} Particles Start Scale", PlayerPlugin.className, i);
                 model.values[string.Format("Tail {0} Particles Start Scale", i)] = float.Parse(jn["tail"][i - 1]["particles"]["sca"]["start"]);
-                Debug.LogFormat("{0}Loading Tail {1} Particles End Scale", PlayerPlugin.className, i);
+                LogFormat("{0}Loading Tail {1} Particles End Scale", PlayerPlugin.className, i);
                 model.values[string.Format("Tail {0} Particles End Scale", i)] = float.Parse(jn["tail"][i - 1]["particles"]["sca"]["end"]);
-                Debug.LogFormat("{0}Loading Tail {1} Particles Rotation", PlayerPlugin.className, i);
+                LogFormat("{0}Loading Tail {1} Particles Rotation", PlayerPlugin.className, i);
                 model.values[string.Format("Tail {0} Particles Rotation", i)] = float.Parse(jn["tail"][i - 1]["particles"]["rot"]);
-                Debug.LogFormat("{0}Loading Tail {1} Particles Lifetime", PlayerPlugin.className, i);
+                LogFormat("{0}Loading Tail {1} Particles Lifetime", PlayerPlugin.className, i);
                 model.values[string.Format("Tail {0} Particles Lifetime", i)] = float.Parse(jn["tail"][i - 1]["particles"]["lt"]);
-                Debug.LogFormat("{0}Loading Tail {1} Particles Speed", PlayerPlugin.className, i);
+                LogFormat("{0}Loading Tail {1} Particles Speed", PlayerPlugin.className, i);
                 model.values[string.Format("Tail {0} Particles Speed", i)] = float.Parse(jn["tail"][i - 1]["particles"]["sp"]);
-                Debug.LogFormat("{0}Loading Tail {1} Particles Amount", PlayerPlugin.className, i);
+                LogFormat("{0}Loading Tail {1} Particles Amount", PlayerPlugin.className, i);
                 model.values[string.Format("Tail {0} Particles Amount", i)] = float.Parse(jn["tail"][i - 1]["particles"]["am"]);
-                Debug.LogFormat("{0}Loading Tail {1} Particles Force", PlayerPlugin.className, i);
+                LogFormat("{0}Loading Tail {1} Particles Force", PlayerPlugin.className, i);
                 model.values[string.Format("Tail {0} Particles Force", i)] = new Vector2(float.Parse(jn["tail"][i - 1]["particles"]["frc"]["x"]), float.Parse(jn["tail"][i - 1]["particles"]["frc"]["y"]));
-                Debug.LogFormat("{0}Loading Tail {1} Particles Trail Emitting", PlayerPlugin.className, i);
+                LogFormat("{0}Loading Tail {1} Particles Trail Emitting", PlayerPlugin.className, i);
                 model.values[string.Format("Tail {0} Particles Trail Emitting", i)] = bool.Parse(jn["tail"][i - 1]["particles"]["trem"]);
             }
+
             #endregion
 
             #region Custom Objects
+            
             var dictionary = (Dictionary<string, object>)model.values["Custom Objects"];
             if (jn["custom_objects"] != null && jn["custom_objects"].Count > 0)
                 for (int i = 0; i < jn["custom_objects"].Count; i++)
@@ -1071,8 +1277,14 @@ namespace CreativePlayers.Functions.Data
                 }
             #endregion
 
-            Debug.LogFormat("{0}Done!", PlayerPlugin.className);
+            LogFormat("{0}Done!", PlayerPlugin.className);
             return model;
+        }
+
+        public static void LogFormat(string text, params object[] format)
+        {
+            if (PlayerPlugin.debug)
+                Debug.LogFormat(text, format);
         }
     }
 }
