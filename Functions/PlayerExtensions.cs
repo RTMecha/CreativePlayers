@@ -38,18 +38,27 @@ namespace CreativePlayers.Functions
             }
         }
 
-        public static void AddCustomObject()
+        public static void AddCustomObject(int index)
         {
-            var currentModel = PlayerPlugin.CurrentModel(0);
+            var currentModel = PlayerPlugin.CurrentModel(index);
             if (currentModel != null)
             {
                 currentModel.CreateCustomObject();
             }
         }
 
-        public static void RemoveCustomObject(string id)
+        public static void DuplicateCustomObject(string id, int index)
         {
-            var currentModel = PlayerPlugin.CurrentModel(0);
+            var currentModel = PlayerPlugin.CurrentModel(index);
+            if (currentModel != null)
+            {
+                currentModel.DuplicateObject(id);
+            }
+        }
+        
+        public static void RemoveCustomObject(string id, int index)
+        {
+            var currentModel = PlayerPlugin.CurrentModel(index);
             if (currentModel != null)
             {
                 ((Dictionary<string, object>)currentModel.values["Custom Objects"]).Remove(id);
