@@ -75,6 +75,9 @@ namespace CreativePlayers.Patchers
 						{
 							__instance.Pause();
 						}
+
+						if (customPlayer.GetRTPlayer() && customPlayer.GetRTPlayer().Actions.Escape.WasPressed)
+							__instance.UnPause();
 					}
 				}
 			}
@@ -84,19 +87,31 @@ namespace CreativePlayers.Patchers
 		[HarmonyPrefix]
 		private static bool SpawnPlayersPrefix(GameManager __instance, Vector3 __0)
 		{
+			var vector = __0;
+
 			foreach (InputDataManager.CustomPlayer customPlayer in InputDataManager.inst.players)
 			{
 				if (customPlayer.GetRTPlayer() == null)
 				{
-					Debug.LogFormat("{0}Player [{1}] Pos Spawn: [{2}, {3}]", PlayerPlugin.className, customPlayer.index, __0.x, __0.y);
+					Debug.LogFormat("{0}Player [{1}] Pos Spawn: [{2}, {3}]", PlayerPlugin.className, customPlayer.index, vector.x, vector.y);
 
 					var player = PlayerPlugin.AssignPlayer(customPlayer, __0, GameManager.inst.LiveTheme.playerColors[customPlayer.index % 4]);
 
 					PlayerPlugin.players.Add(player);
 
 					player.transform.SetParent(__instance.players.transform);
-					player.transform.Find("Player").localPosition = new Vector3(__0.x, __0.y, 0f);
+					player.transform.localPosition = new Vector3(0f, 0f, 0f);
+					player.transform.Find("Player").localPosition = new Vector3(vector.x, vector.y, 0f);
 					player.transform.localScale = Vector3.one;
+					player.transform.localRotation = Quaternion.identity;
+
+					foreach (var path in player.path)
+                    {
+						if (path.transform != null)
+                        {
+							path.pos = new Vector3(vector.x, vector.y);
+                        }
+                    }
 
 					if (EditorManager.inst == null)
 					{
@@ -104,7 +119,7 @@ namespace CreativePlayers.Patchers
 						{
 							player.playerDeathEvent += delegate (Vector3 _val)
 							{
-								if (InputDataManager.inst.players.All(x => !x.GetRTPlayer().PlayerAlive))
+								if (InputDataManager.inst.players.All(x => x.GetRTPlayer() == null || !x.GetRTPlayer().PlayerAlive))
 								{
 									__instance.lastCheckpointState = -1;
 									__instance.ResetCheckpoints();
@@ -118,7 +133,7 @@ namespace CreativePlayers.Patchers
 						{
 							player.playerDeathEvent += delegate (Vector3 _val)
 							{
-								if (InputDataManager.inst.players.All(x => !x.GetRTPlayer().PlayerAlive))
+								if (InputDataManager.inst.players.All(x => x.GetRTPlayer() == null || !x.GetRTPlayer().PlayerAlive))
 								{
 									__instance.gameState = GameManager.State.Reversing;
 								}
@@ -140,7 +155,7 @@ namespace CreativePlayers.Patchers
 					{
 						player.playerDeathEvent += delegate (Vector3 _val)
 						{
-							if (InputDataManager.inst.players.All(x => !x.GetRTPlayer().PlayerAlive))
+							if (InputDataManager.inst.players.All(x => x.GetRTPlayer() == null || !x.GetRTPlayer().PlayerAlive))
 							{
 								//__instance.ResetCheckpoints();
 								__instance.gameState = GameManager.State.Reversing;
@@ -215,8 +230,8 @@ namespace CreativePlayers.Patchers
 			}
 		}
 
-		[HarmonyPatch("QuitToArcade")]
-		[HarmonyPostfix]
+		[HarmonyPatch("EndOfLevel")]
+		[HarmonyPrefix]
 		private static void QuitToArcadePostfix()
         {
 			PlayerPlugin.players.Clear();
