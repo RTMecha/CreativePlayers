@@ -128,8 +128,12 @@ namespace CreativePlayers.Functions.Data
 
                 #endregion
 
+                #region Face
+
                 values.Add("Face Position", new Vector2(0.3f, 0f));
                 values.Add("Face Control Active", true);
+
+                #endregion
 
                 #region Boost
 
@@ -203,6 +207,42 @@ namespace CreativePlayers.Functions.Data
                 values.Add("Pulse End Rotation", 0f);
                 values.Add("Pulse Easing Rotation", 4);
                 values.Add("Pulse Duration", 1f);
+
+                #endregion
+
+                #region Bullet
+
+                values.Add("Bullet Active", false);
+                values.Add("Bullet Speed Amount", 6f);
+                values.Add("Bullet Lifetime", 1f);
+                values.Add("Bullet Delay Amount", 0.2f);
+                values.Add("Bullet Constant", true);
+                values.Add("Bullet Hurt Players", false);
+                values.Add("Bullet Origin", Vector2.zero);
+                values.Add("Bullet Shape", Vector2Int.zero);
+                values.Add("Bullet Start Color", 0);
+                values.Add("Bullet Start Custom Color", "FFFFFF");
+                values.Add("Bullet End Color", 23);
+                values.Add("Bullet End Custom Color", "FFFFFF");
+                values.Add("Bullet Easing Color", 4);
+                values.Add("Bullet Duration Color", 1f);
+                values.Add("Bullet Start Opacity", 1f);
+                values.Add("Bullet End Opacity", 1f);
+                values.Add("Bullet Easing Opacity", 3);
+                values.Add("Bullet Duration Opacity", 1f);
+                values.Add("Bullet Depth", 0.1f);
+                values.Add("Bullet Start Position", Vector2.zero);
+                values.Add("Bullet End Position", Vector2.zero);
+                values.Add("Bullet Easing Position", 4);
+                values.Add("Bullet Duration Position", 1f);
+                values.Add("Bullet Start Scale", Vector2.zero);
+                values.Add("Bullet End Scale", new Vector2(3f, 1f));
+                values.Add("Bullet Easing Scale", 4);
+                values.Add("Bullet Duration Scale", 0.1f);
+                values.Add("Bullet Start Rotation", 0f);
+                values.Add("Bullet End Rotation", 0f);
+                values.Add("Bullet Easing Rotation", 4);
+                values.Add("Bullet Duration Rotation", 1f);
 
                 #endregion
 
@@ -364,8 +404,12 @@ namespace CreativePlayers.Functions.Data
 
                 #endregion
 
+                #region Face
+
                 values.Add("Face Position", new Vector2(0.3f, 0f));
                 values.Add("Face Control Active", true);
+
+                #endregion
 
                 #region Boost
 
@@ -442,6 +486,42 @@ namespace CreativePlayers.Functions.Data
 
                 #endregion
 
+                #region Bullet
+
+                values.Add("Bullet Active", false);
+                values.Add("Bullet Speed Amount", 6f);
+                values.Add("Bullet Lifetime", 1f);
+                values.Add("Bullet Delay Amount", 0.2f);
+                values.Add("Bullet Constant", true);
+                values.Add("Bullet Hurt Players", false);
+                values.Add("Bullet Origin", Vector2.zero);
+                values.Add("Bullet Shape", Vector2Int.zero);
+                values.Add("Bullet Start Color", 0);
+                values.Add("Bullet Start Custom Color", "FFFFFF");
+                values.Add("Bullet End Color", 23);
+                values.Add("Bullet End Custom Color", "FFFFFF");
+                values.Add("Bullet Easing Color", 4);
+                values.Add("Bullet Duration Color", 1f);
+                values.Add("Bullet Start Opacity", 1f);
+                values.Add("Bullet End Opacity", 1f);
+                values.Add("Bullet Easing Opacity", 3);
+                values.Add("Bullet Duration Opacity", 1f);
+                values.Add("Bullet Depth", 0.1f);
+                values.Add("Bullet Start Position", Vector2.zero);
+                values.Add("Bullet End Position", Vector2.zero);
+                values.Add("Bullet Easing Position", 4);
+                values.Add("Bullet Duration Position", 1f);
+                values.Add("Bullet Start Scale", Vector2.zero);
+                values.Add("Bullet End Scale", new Vector2(3f, 1f));
+                values.Add("Bullet Easing Scale", 4);
+                values.Add("Bullet Duration Scale", 0.1f);
+                values.Add("Bullet Start Rotation", 0f);
+                values.Add("Bullet End Rotation", 0f);
+                values.Add("Bullet Easing Rotation", 4);
+                values.Add("Bullet Duration Rotation", 1f);
+
+                #endregion
+
                 #region Tail Base
 
                 values.Add("Tail Base Distance", 2f);
@@ -508,11 +588,69 @@ namespace CreativePlayers.Functions.Data
                 values.Add("Custom Objects", new Dictionary<string, object>());
             }
 
+            public void DuplicateObject(string id)
+            {
+                var dictionary = (Dictionary<string, object>)values["Custom Objects"];
+
+                var idNew = LSFunctions.LSText.randomNumString(16);
+
+                while (dictionary.ContainsKey(idNew))
+                    idNew = LSFunctions.LSText.randomNumString(16);
+
+                if (dictionary.ContainsKey(id))
+                {
+                    dictionary.Add(idNew, new Dictionary<string, object>());
+
+                    var name = (string)((Dictionary<string, object>)dictionary[id])["Name"];
+                    var shape = (Vector2Int)((Dictionary<string, object>)dictionary[id])["Shape"];
+                    var p = (int)((Dictionary<string, object>)dictionary[id])["Parent"];
+                    var ppo = (float)((Dictionary<string, object>)dictionary[id])["Parent Position Offset"];
+                    var pso = (float)((Dictionary<string, object>)dictionary[id])["Parent Scale Offset"];
+                    var psa = (bool)((Dictionary<string, object>)dictionary[id])["Parent Scale Active"];
+                    var pro = (float)((Dictionary<string, object>)dictionary[id])["Parent Rotation Offset"];
+                    var pra = (bool)((Dictionary<string, object>)dictionary[id])["Parent Rotation Active"];
+                    var d = (float)((Dictionary<string, object>)dictionary[id])["Depth"];
+                    var pos = (Vector2)((Dictionary<string, object>)dictionary[id])["Position"];
+                    var sca = (Vector2)((Dictionary<string, object>)dictionary[id])["Scale"];
+                    var rot = (float)((Dictionary<string, object>)dictionary[id])["Rotation"];
+                    var col = (int)((Dictionary<string, object>)dictionary[id])["Color"];
+                    var ccol = (string)((Dictionary<string, object>)dictionary[id])["Custom Color"];
+                    var opa = (float)((Dictionary<string, object>)dictionary[id])["Opacity"];
+                    var vis = (int)((Dictionary<string, object>)dictionary[id])["Visibility"];
+                    var visval = (float)((Dictionary<string, object>)dictionary[id])["Visibility Value"];
+                    var visnot = (bool)((Dictionary<string, object>)dictionary[id])["Visibility Not"];
+
+                    ((Dictionary<string, object>)dictionary[idNew]).Add("ID", idNew);
+                    ((Dictionary<string, object>)dictionary[idNew]).Add("Name", name);
+
+                    ((Dictionary<string, object>)dictionary[idNew]).Add("Shape", shape);
+                    ((Dictionary<string, object>)dictionary[idNew]).Add("Parent", p);
+                    ((Dictionary<string, object>)dictionary[idNew]).Add("Parent Position Offset", ppo);
+                    ((Dictionary<string, object>)dictionary[idNew]).Add("Parent Scale Offset", pso);
+                    ((Dictionary<string, object>)dictionary[idNew]).Add("Parent Scale Active", psa);
+                    ((Dictionary<string, object>)dictionary[idNew]).Add("Parent Rotation Offset", pro);
+                    ((Dictionary<string, object>)dictionary[idNew]).Add("Parent Rotation Active", pra);
+                    ((Dictionary<string, object>)dictionary[idNew]).Add("Depth", d);
+                    ((Dictionary<string, object>)dictionary[idNew]).Add("Position", pos);
+                    ((Dictionary<string, object>)dictionary[idNew]).Add("Scale", sca);
+                    ((Dictionary<string, object>)dictionary[idNew]).Add("Rotation", rot);
+                    ((Dictionary<string, object>)dictionary[idNew]).Add("Color", col);
+                    ((Dictionary<string, object>)dictionary[idNew]).Add("Custom Color", ccol);
+                    ((Dictionary<string, object>)dictionary[idNew]).Add("Opacity", opa);
+                    ((Dictionary<string, object>)dictionary[idNew]).Add("Visibility", vis); //0 = Normal / 1 = Boost / 2 = Hit / 3 = Zen Mode / 4 = Specific Health Percentage
+                    ((Dictionary<string, object>)dictionary[idNew]).Add("Visibility Value", visval); //Percentage
+                    ((Dictionary<string, object>)dictionary[idNew]).Add("Visibility Not", visnot);
+                }
+            }
+
             public void CreateCustomObject()
             {
                 var dictionary = (Dictionary<string, object>)values["Custom Objects"];
 
                 var id = LSFunctions.LSText.randomNumString(16);
+
+                while (dictionary.ContainsKey(id))
+                    id = LSFunctions.LSText.randomNumString(16);
 
                 dictionary.Add(id, new Dictionary<string, object>());
 
