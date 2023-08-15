@@ -23,13 +23,16 @@ using RTFunctions.Functions;
 
 namespace CreativePlayers
 {
-    [BepInPlugin("com.mecha.creativeplayers", "Creative Players", "1.1.8")]
+    [BepInPlugin("com.mecha.creativeplayers", "Creative Players", "1.2.1")]
 	[BepInIncompatibility("com.mecha.playereditor")]
 	[BepInDependency("com.mecha.rtfunctions")]
 	[BepInProcess("Project Arrhythmia.exe")]
 	public class PlayerPlugin : BaseUnityPlugin
     {
 		//Updates:
+		//Fixed Zen Mode visibility in editor.
+
+		public static bool debug = false;
 
 		public static string VersionNumber
         {
@@ -94,14 +97,26 @@ namespace CreativePlayers
 		public static ConfigEntry<bool> PlaySoundR { get; set; }
 		public static ConfigEntry<RTPlayer.TailUpdateMode> TailUpdateMode { get; set; }
 
+		public static ConfigEntry<InputControlType> PlayerShootControl { get; set; }
+		public static ConfigEntry<Key> PlayerShootKey { get; set; }
+		public static ConfigEntry<bool> PlayerShootSound { get; set; }
+		public static ConfigEntry<bool> AllowPlayersToTakeBulletDamage { get; set; }
+
+		public static ConfigEntry<bool> AssetsGlobal { get; set; }
+
+		public static ConfigEntry<bool> Debugger { get; set; }
+
         private void Awake()
         {
             inst = this;
             // Plugin startup logic
             Logger.LogInfo("Plugin Creative Players is loaded!");
 
+			Debugger = Config.Bind("Debug", "CreativePlayers Logs Enabled", false);
+
 			ZenModeInEditor = Config.Bind("Game", "Zen Mode", false, "If enabled, the player will not take damage in the editor.");
 			PlayerNameTags = Config.Bind("Game", "Multiplayer NameTags", false, "If enabled and if there's more than one person playing, nametags will show which player is which (WIP).");
+			AssetsGlobal = Config.Bind("Game", "Assets Global Source", false, "Assets will use BepInEx/plugins/Assets as the folder instead of the local level folder.");
 			LoadFromGlobalPlayersInArcade = Config.Bind("Loading", "Always use global source", false, "Makes the player models always load from beatmaps/players for entering an arcade level. If disabled, players will be loaded from the local players.lspl file.");
 
 			TailUpdateMode = Config.Bind("Player", "Tail Update Mode", RTPlayer.TailUpdateMode.FixedUpdate, "Changes the way the tail updates movement. FixedUpdate is recommended if the game gets laggy, but otherwise Update / LateUpdate is good for a smooth tail.");
@@ -110,6 +125,11 @@ namespace CreativePlayers
 			PlaySoundR = Config.Bind("Player", "Play Boost Recover Sound", false, "Plays a little sound when you can boost again.");
 
 			ZenEditorIncludesSolid = Config.Bind("Player", "Editor Zen Mode includes Solid", false, "Makes Player ignore solid objects in editor.");
+
+			PlayerShootControl = Config.Bind("Player", "Shoot Control", InputControlType.Action3, "Controller button to press to shoot. Requires restart if changed.");
+			PlayerShootKey = Config.Bind("Player", "Shoot Key", Key.Z, "Keyboard key to press to shoot. Requires restart if changed.");
+			PlayerShootSound = Config.Bind("Player", "Play Shoot Sound", true, "Plays a little sound when you shoot.");
+			AllowPlayersToTakeBulletDamage = Config.Bind("Player", "Shots hurt other players", false, "Disable this if you don't want players to kill each other.");
 
 			Player1Index = Config.Bind("Loading", "Player 1 Model", "0", "The player uses this specific model ID.");
 			Player2Index = Config.Bind("Loading", "Player 2 Model", "0", "The player uses this specific model ID.");
@@ -130,6 +150,7 @@ namespace CreativePlayers
             harmony.PatchAll(typeof(EditorManagerPatch));
             harmony.PatchAll(typeof(OnTriggerEnterPassPatch));
             harmony.PatchAll(typeof(PlayerPatch));
+			harmony.PatchAll(typeof(MyGameActionsPatch));
 
 			GameObject spr = new GameObject("SpriteManager for Player");
 			DontDestroyOnLoad(spr);
@@ -140,6 +161,7 @@ namespace CreativePlayers
 			playerModelsIndex.Add(2, "0");
 			playerModelsIndex.Add(3, "0");
 		}
+
 		private static void UpdateSettings(object sender, EventArgs e)
         {
 			if (players.Count > 0)
@@ -149,13 +171,15 @@ namespace CreativePlayers
 					player.updatePlayer();
 				}
             }
+
+			debug = Debugger.Value;
         }
 
 		[HarmonyPatch(typeof(InputDataManager), "AlivePlayers", MethodType.Getter)]
 		[HarmonyPrefix]
-		public static bool GetAlivePlayers(InputDataManager __instance)
+		public static bool GetAlivePlayers(InputDataManager __instance, ref List<InputDataManager.CustomPlayer> __result)
         {
-			__instance.GetType().GetProperty("AlivePlayers").SetValue(__instance, __instance.players.FindAll(x => x.GetRTPlayer().PlayerAlive));
+			__result = __instance.players.FindAll(x => x.GetRTPlayer() != null && x.GetRTPlayer().PlayerAlive);
 			return false;
         }
 
@@ -165,7 +189,7 @@ namespace CreativePlayers
 
 			GameObject objAssign = CurrentModel(_player.index % 4).gm;
 
-			GameObject gameObject = Instantiate(objAssign, new Vector3(0, 0, -6f), Quaternion.identity);
+			GameObject gameObject = Instantiate(objAssign);
 			gameObject.layer = 8;
 			gameObject.name = "Player " + (_player.index + 1);
 			gameObject.SetActive(true);
@@ -236,7 +260,7 @@ namespace CreativePlayers
 			players.Clear();
 			yield return new WaitForSeconds(0.1f);
 
-			GameManager.inst.SpawnPlayers(Vector3.zero);
+			GameManager.inst.SpawnPlayers(EventManager.inst.cam.transform.position);
 			yield break;
         }
 
@@ -257,7 +281,7 @@ namespace CreativePlayers
             if (DataManager.inst.gameData.beatmapData.checkpoints.Count > prevIndex && DataManager.inst.gameData.beatmapData.checkpoints[prevIndex] != null)
 				GameManager.inst.SpawnPlayers(DataManager.inst.gameData.beatmapData.checkpoints[prevIndex].pos);
 			else
-				GameManager.inst.SpawnPlayers(Vector3.zero);
+				GameManager.inst.SpawnPlayers(EventManager.inst.cam.transform.position);
 			yield break;
 		}
 
@@ -503,9 +527,58 @@ namespace CreativePlayers
 			if (playerModels.ContainsKey(id))
             {
 				playerModelsIndex[index] = id;
-				inst.StartCoroutine(RespawnPlayer(index));
+				if (players.Count > index && players[index] != null)
+					players[index].updatePlayer();
 			}
         }
+
+		public static void DuplicatePlayerModel(string id)
+        {
+			if (!RTFile.DirectoryExists(RTFile.ApplicationDirectory + "beatmaps/players"))
+			{
+				Directory.CreateDirectory(RTFile.ApplicationDirectory + "beatmaps/players");
+			}
+
+			var files = Directory.GetFiles(RTFile.ApplicationDirectory + "beatmaps/players");
+
+			var pm = new List<PlayerModelClass.PlayerModel>();
+			string dd = "";
+
+			if (files.Length > 0)
+			{
+				foreach (var file in files)
+				{
+					if (Path.GetFileName(file).Contains(".lspl") && Path.GetFileName(file) != "regular.lspl" && Path.GetFileName(file) != "circle.lspl")
+					{
+						var filename = Path.GetFileName(file).Replace(".lspl", "");
+
+						if (RTFile.FileExists(filename))
+						{
+							string json = FileManager.inst.LoadJSONFileRaw(filename);
+							JSONNode jn = JSON.Parse(json);
+
+							if ((string)jn["base"]["id"] == id)
+							{
+								var model = PlayerData.LoadPlayer(filename);
+								string name = (string)model.values["Base ID"];
+								if (name == id)
+									dd = filename;
+
+								model.filePath = file;
+
+
+								model.values["Base Name"] += " Clone";
+								model.values["Base ID"] = LSFunctions.LSText.randomNumString(16);
+
+								PlayerData.SavePlayer(model, (string)model.values["Base Name"]);
+							}
+						}
+					}
+				}
+			}
+
+			StartLoadingModels();
+		}
 
 		public static DataManager.GameData.BeatmapData.Checkpoint GetClosestIndex(GameManager __instance, List<DataManager.GameData.BeatmapData.Checkpoint> checkpoints, float time)
         {
