@@ -20,10 +20,12 @@ using CreativePlayers.Functions;
 using CreativePlayers.Functions.Data;
 
 using RTFunctions.Functions;
+using RTFunctions.Functions.IO;
+using RTFunctions.Functions.Managers;
 
 namespace CreativePlayers
 {
-    [BepInPlugin("com.mecha.creativeplayers", "Creative Players", "1.2.1")]
+    [BepInPlugin("com.mecha.creativeplayers", "Creative Players", "2.3.0")]
 	[BepInIncompatibility("com.mecha.playereditor")]
 	[BepInDependency("com.mecha.rtfunctions")]
 	[BepInProcess("Project Arrhythmia.exe")]
@@ -151,6 +153,7 @@ namespace CreativePlayers
             harmony.PatchAll(typeof(OnTriggerEnterPassPatch));
             harmony.PatchAll(typeof(PlayerPatch));
 			harmony.PatchAll(typeof(MyGameActionsPatch));
+			harmony.PatchAll(typeof(SoundLibraryPatch));
 
 			GameObject spr = new GameObject("SpriteManager for Player");
 			DontDestroyOnLoad(spr);
@@ -161,6 +164,12 @@ namespace CreativePlayers
 			playerModelsIndex.Add(2, "0");
 			playerModelsIndex.Add(3, "0");
 		}
+
+		void Update()
+        {
+			if (GameManager.inst == null)
+				players.Clear();
+        }
 
 		private static void UpdateSettings(object sender, EventArgs e)
         {
@@ -308,7 +317,7 @@ namespace CreativePlayers
 		}
 
 		public static void StartLoadingLocalModels()
-        {
+		{
 			if (!LoadFromGlobalPlayersInArcade.Value)
 				inst.StartCoroutine(LoadLocalModels());
 			else
@@ -399,7 +408,7 @@ namespace CreativePlayers
 		}
 
 		public static void StartLoadingModels()
-        {
+		{
 			inst.StartCoroutine(LoadPlayerModels());
         }
 
@@ -466,7 +475,8 @@ namespace CreativePlayers
         }
 
 		public static void LoadIndexes()
-        {
+		{
+			inst.StartCoroutine(SoundLibraryPatch.SetAudioClips());
 			string location = RTFile.ApplicationDirectory + RTFile.basePath + "players.lsb";
 
 			if (RTFile.FileExists(location))
