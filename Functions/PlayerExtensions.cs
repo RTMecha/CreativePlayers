@@ -12,6 +12,8 @@ using CreativePlayers.Functions.Data;
 using Obj = UnityEngine.Object;
 
 using RTFunctions.Functions;
+using RTFunctions.Functions.IO;
+using RTFunctions.Functions.Managers;
 
 namespace CreativePlayers.Functions
 {
@@ -429,5 +431,20 @@ namespace CreativePlayers.Functions
 
             return str += "]";
         }
+
+        static Dictionary<string, GameObject> test = new Dictionary<string, GameObject>()
+        {
+            { "s", null }
+        };
+
+        //static void TesterDictionary()
+        //{
+        //    test.Add(new KeyValuePair<string, GameObject>("", new GameObject("")));
+        //}
+
+        //public static Dictionary<string, GameObject> test = new Dictionary<string, GameObject>
+        //{
+        //    NewKeyValuePair("", new GameObject(""))
+        //};
     }
 }
