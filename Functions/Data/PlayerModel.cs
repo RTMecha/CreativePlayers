@@ -213,6 +213,7 @@ namespace CreativePlayers.Functions.Data
                 #region Bullet
 
                 values.Add("Bullet Active", false);
+                values.Add("Bullet AutoKill", false);
                 values.Add("Bullet Speed Amount", 6f);
                 values.Add("Bullet Lifetime", 1f);
                 values.Add("Bullet Delay Amount", 0.2f);
@@ -489,6 +490,7 @@ namespace CreativePlayers.Functions.Data
                 #region Bullet
 
                 values.Add("Bullet Active", false);
+                values.Add("Bullet AutoKill", false);
                 values.Add("Bullet Speed Amount", 6f);
                 values.Add("Bullet Lifetime", 1f);
                 values.Add("Bullet Delay Amount", 0.2f);

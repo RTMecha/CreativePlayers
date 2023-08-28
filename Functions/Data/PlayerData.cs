@@ -6,6 +6,8 @@ using SimpleJSON;
 using UnityEngine;
 
 using RTFunctions.Functions;
+using RTFunctions.Functions.IO;
+using RTFunctions.Functions.Managers;
 
 namespace CreativePlayers.Functions.Data
 {
@@ -297,6 +299,9 @@ namespace CreativePlayers.Functions.Data
 
             LogFormat("{0}Saving Bullet Active", PlayerPlugin.className);
             jn["bullet"]["active"] = ((bool)_model.values["Bullet Active"]).ToString();
+
+            LogFormat("{0}Saving Bullet AutoKill", PlayerPlugin.className);
+            jn["bullet"]["ak"] = ((bool)_model.values["Bullet AutoKill"]).ToString();
 
             LogFormat("{0}Saving Bullet Speed Amount", PlayerPlugin.className);
             jn["bullet"]["speed"] = ((float)_model.values["Bullet Speed Amount"]).ToString();
@@ -930,6 +935,10 @@ namespace CreativePlayers.Functions.Data
                 LogFormat("{0}Loading Bullet Active", PlayerPlugin.className);
                 if (!string.IsNullOrEmpty(jn["bullet"]["active"]))
                     model.values["Bullet Active"] = bool.Parse(jn["bullet"]["active"]);
+
+                LogFormat("{0}Loading Bullet AutoKill", PlayerPlugin.className);
+                if (!string.IsNullOrEmpty(jn["bullet"]["ak"]))
+                    model.values["Bullet AutoKill"] = bool.Parse(jn["bullet"]["ak"]);
 
                 LogFormat("{0}Loading Bullet Speed Amount", PlayerPlugin.className);
                 if (!string.IsNullOrEmpty(jn["bullet"]["speed"]))
