@@ -13,6 +13,13 @@ namespace CreativePlayers.Patchers
     [HarmonyPatch(typeof(GameManager))]
     public class GameManagerPatch : MonoBehaviour
 	{
+		[HarmonyPatch("Awake")]
+		[HarmonyPrefix]
+		static void AwakePrefix()
+        {
+			PlayerPlugin.players.Clear();
+        }
+
 		[HarmonyPatch("Start")]
 		[HarmonyPostfix]
 		private static void StartPostfix(GameManager __instance)
@@ -72,20 +79,20 @@ namespace CreativePlayers.Patchers
 					foreach (InputDataManager.CustomPlayer customPlayer in InputDataManager.inst.players)
 					{
 						if (customPlayer.GetRTPlayer() && customPlayer.GetRTPlayer().Actions.Pause.WasPressed)
-						{
 							__instance.Pause();
-						}
 
-						if (customPlayer.GetRTPlayer() && customPlayer.GetRTPlayer().Actions.Escape.WasPressed)
+						if (customPlayer.GetRTPlayer() && customPlayer.GetRTPlayer().Actions.Escape.WasPressed && canUnPause)
 							__instance.UnPause();
 					}
 				}
 			}
 		}
 
+		static bool canUnPause = false;
+
 		[HarmonyPatch("SpawnPlayers")]
 		[HarmonyPrefix]
-		private static bool SpawnPlayersPrefix(GameManager __instance, Vector3 __0)
+		static bool SpawnPlayersPrefix(GameManager __instance, Vector3 __0)
 		{
 			var vector = __0;
 
@@ -173,7 +180,7 @@ namespace CreativePlayers.Patchers
 
 		[HarmonyPatch("Pause")]
 		[HarmonyPrefix]
-		private static bool PausePrefix(GameManager __instance)
+		static bool PausePrefix(GameManager __instance)
 		{
 			if (__instance.gameState == GameManager.State.Playing)
 			{
@@ -187,13 +194,14 @@ namespace CreativePlayers.Patchers
 					if (customPlayer.GetRTPlayer() != null)
 						((Animator)customPlayer.GetRTPlayer().playerObjects["Base"].values["Animator"]).speed = 0f;
 				}
+				canUnPause = true;
 			}
 			return false;
 		}
 
 		[HarmonyPatch("UnPause")]
 		[HarmonyPrefix]
-		private static bool UnPausePrefix(GameManager __instance)
+		static bool UnPausePrefix(GameManager __instance)
 		{
 			if (__instance.gameState == GameManager.State.Paused)
 			{
@@ -206,6 +214,7 @@ namespace CreativePlayers.Patchers
 					if (customPlayer.GetRTPlayer() != null)
 						((Animator)customPlayer.GetRTPlayer().playerObjects["Base"].values["Animator"]).speed = 1f;
 				}
+				canUnPause = false;
 			}
 			return false;
 		}
