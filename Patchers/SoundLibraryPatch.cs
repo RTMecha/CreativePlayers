@@ -27,7 +27,8 @@ namespace CreativePlayers.Patchers
 
             foreach (var soundGroup in __instance.soundGroups)
             {
-                originalClips.Add(soundGroup.soundID, soundGroup.group);
+                if (!originalClips.ContainsKey(soundGroup.soundID))
+                    originalClips.Add(soundGroup.soundID, soundGroup.group);
             }
         }
 
