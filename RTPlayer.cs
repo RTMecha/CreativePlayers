@@ -20,6 +20,7 @@ using CreativePlayers.Functions.Components;
 using CreativePlayers.Functions.Data;
 
 using RTFunctions.Functions;
+using RTFunctions.Functions.IO;
 using RTFunctions.Functions.Managers;
 
 namespace CreativePlayers
@@ -2951,6 +2952,22 @@ namespace CreativePlayers
             pulseRenderer.material.shader = ((MeshRenderer)playerObjects["Head"].values["MeshRenderer"]).material.shader;
             Color colorBase = ((MeshRenderer)playerObjects["Head"].values["MeshRenderer"]).material.color;
 
+            var collider2D = pulse.transform.GetChild(0).GetComponent<Collider2D>();
+            collider2D.enabled = true;
+            //collider2D.isTrigger = false;
+
+            var rb2D = pulse.transform.GetChild(0).gameObject.AddComponent<Rigidbody2D>();
+            rb2D.gravityScale = 0f;
+
+            var bulletCollider = pulse.transform.GetChild(0).gameObject.AddComponent<BulletCollider>();
+            bulletCollider.rb = (Rigidbody2D)playerObjects["RB Parent"].values["Rigidbody2D"];
+            if (currentModel.values.ContainsKey("Bullet AutoKill"))
+            {
+                bulletCollider.kill = (bool)currentModel.values["Bullet AutoKill"];
+            }
+            bulletCollider.player = this;
+            bulletCollider.playerObject = obj;
+
             int easingPos = (int)currentModel.values["Bullet Easing Position"];
             int easingSca = (int)currentModel.values["Bullet Easing Scale"];
             int easingRot = (int)currentModel.values["Bullet Easing Rotation"];
@@ -2978,14 +2995,18 @@ namespace CreativePlayers
             StartCoroutine(CanShoot());
 
             var tweener = DOTween.To(delegate (float x) { }, 1f, 1f, lifeTime).SetEase(DataManager.inst.AnimationList[easingOpa].Animation);
+            bulletCollider.tweener = tweener;
 
             tweener.OnComplete(delegate ()
             {
                 var tweenScale = pulse.transform.GetChild(0).DOScale(Vector3.zero, 0.2f).SetEase(DataManager.inst.AnimationList[2].Animation);
+                bulletCollider.tweener = tweenScale;
+
                 tweenScale.OnComplete(delegate ()
                 {
                     Destroy(pulse);
                     boosts.Remove(obj);
+                    obj = null;
                 });
             });
         }
