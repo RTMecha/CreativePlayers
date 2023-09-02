@@ -72,23 +72,18 @@ namespace CreativePlayers.Patchers
 		[HarmonyPostfix]
 		private static void GameUpdatePostfix(GameManager __instance)
 		{
-			if (__instance.gameState == GameManager.State.Playing)
+			if (EditorManager.inst == null)
 			{
-				if (EditorManager.inst == null)
+				foreach (InputDataManager.CustomPlayer customPlayer in InputDataManager.inst.players)
 				{
-					foreach (InputDataManager.CustomPlayer customPlayer in InputDataManager.inst.players)
-					{
-						if (customPlayer.GetRTPlayer() && customPlayer.GetRTPlayer().Actions.Pause.WasPressed)
-							__instance.Pause();
+					if (customPlayer.GetRTPlayer() && customPlayer.GetRTPlayer().Actions.Escape.WasPressed && __instance.gameState == GameManager.State.Paused)
+						__instance.UnPause();
 
-						if (customPlayer.GetRTPlayer() && customPlayer.GetRTPlayer().Actions.Escape.WasPressed && canUnPause)
-							__instance.UnPause();
-					}
+					if (customPlayer.GetRTPlayer() && customPlayer.GetRTPlayer().Actions.Pause.WasPressed && __instance.gameState == GameManager.State.Playing)
+						__instance.Pause();
 				}
 			}
 		}
-
-		static bool canUnPause = false;
 
 		[HarmonyPatch("SpawnPlayers")]
 		[HarmonyPrefix]
@@ -189,12 +184,11 @@ namespace CreativePlayers.Patchers
 				AudioManager.inst.CurrentAudioSource.Pause();
 				InputDataManager.inst.SetAllControllerRumble(0f);
 				__instance.gameState = GameManager.State.Paused;
-				foreach (InputDataManager.CustomPlayer customPlayer in InputDataManager.inst.players)
-				{
-					if (customPlayer.GetRTPlayer() != null)
-						((Animator)customPlayer.GetRTPlayer().playerObjects["Base"].values["Animator"]).speed = 0f;
-				}
-				canUnPause = true;
+				//foreach (InputDataManager.CustomPlayer customPlayer in InputDataManager.inst.players)
+				//{
+				//	if (customPlayer.GetRTPlayer() != null)
+				//		((Animator)customPlayer.GetRTPlayer().playerObjects["Base"].values["Animator"]).speed = 0f;
+				//}
 			}
 			return false;
 		}
@@ -209,12 +203,11 @@ namespace CreativePlayers.Patchers
 				__instance.menuUI.GetComponentInChildren<Image>().enabled = false;
 				AudioManager.inst.CurrentAudioSource.UnPause();
 				__instance.gameState = GameManager.State.Playing;
-				foreach (InputDataManager.CustomPlayer customPlayer in InputDataManager.inst.players)
-				{
-					if (customPlayer.GetRTPlayer() != null)
-						((Animator)customPlayer.GetRTPlayer().playerObjects["Base"].values["Animator"]).speed = 1f;
-				}
-				canUnPause = false;
+				//foreach (InputDataManager.CustomPlayer customPlayer in InputDataManager.inst.players)
+				//{
+				//	if (customPlayer.GetRTPlayer() != null)
+				//		((Animator)customPlayer.GetRTPlayer().playerObjects["Base"].values["Animator"]).speed = 1f;
+				//}
 			}
 			return false;
 		}
