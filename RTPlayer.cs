@@ -232,7 +232,7 @@ namespace CreativePlayers
 
         #region Spawn
 
-        private void Awake()
+        void Awake()
         {
             //if (gameObject.GetComponent<Player>())
             //    Destroy(gameObject.GetComponent<Player>());
@@ -559,7 +559,7 @@ namespace CreativePlayers
             barRT.anchoredPosition = new Vector2(-100f, 0f);
         }
 
-        private void Start()
+        void Start()
         {
             playerHealEvent += UpdateTail;
             playerHitEvent += UpdateTail;
@@ -567,7 +567,7 @@ namespace CreativePlayers
             Spawn();
         }
 
-        private void Spawn()
+        void Spawn()
         {
             //var anim = (Animator)playerObjects["Base"].values["Animator"];
             var currentModel = PlayerPlugin.CurrentModel(playerIndex);
@@ -617,10 +617,10 @@ namespace CreativePlayers
                 //myGameActions.Boost.AddDefaultBinding(InputControlType.RightBumper);
                 myGameActions.Boost.AddDefaultBinding(InputControlType.Action1);
                 myGameActions.Boost.AddDefaultBinding(InputControlType.Action3);
-                myGameActions.Join.AddDefaultBinding(InputControlType.Action1);
-                myGameActions.Join.AddDefaultBinding(InputControlType.Action2);
-                myGameActions.Join.AddDefaultBinding(InputControlType.Action3);
-                myGameActions.Join.AddDefaultBinding(InputControlType.Action4);
+                //myGameActions.Join.AddDefaultBinding(InputControlType.Action1);
+                //myGameActions.Join.AddDefaultBinding(InputControlType.Action2);
+                //myGameActions.Join.AddDefaultBinding(InputControlType.Action3);
+                //myGameActions.Join.AddDefaultBinding(InputControlType.Action4);
                 myGameActions.Pause.AddDefaultBinding(InputControlType.Command);
                 myGameActions.Escape.AddDefaultBinding(InputControlType.Action2);
                 myGameActions.Escape.AddDefaultBinding(InputControlType.Action4);
@@ -649,9 +649,9 @@ namespace CreativePlayers
 
         #region Update Methods
 
-        private void Update()
+        void Update()
         {
-            UpdateCustomTheme(); UpdateBoostTheme(); UpdateSpeeds();
+            UpdateCustomTheme(); UpdateBoostTheme(); UpdateSpeeds(); UpdateTrailLengths();
             if (canvas != null)
             {
                 bool act = InputDataManager.inst.players.Count > 1 && PlayerPlugin.PlayerNameTags.Value;
@@ -662,6 +662,18 @@ namespace CreativePlayers
                     textMesh.text = "<#" + LSColors.ColorToHex(GameManager.inst.LiveTheme.playerColors[playerIndex % 4]) + ">Player " + (playerIndex + 1).ToString() + " " + PlayerExtensions.ConvertHealthToEquals(CustomPlayer.health, initialHealthCount);
                     healthBase.material.color = LSColors.fadeColor(GameManager.inst.LiveTheme.playerColors[playerIndex % 4], 0.3f);
                     healthBase.transform.localScale = new Vector3((float)initialHealthCount * 2.25f, 1.5f, 1f);
+                }
+            }
+
+            //Anim
+            {
+                if (GameManager.inst.gameState == GameManager.State.Paused)
+                {
+                    ((Animator)playerObjects["Base"].values["Animator"]).speed = 0f;
+                }
+                else if (GameManager.inst.gameState == GameManager.State.Playing)
+                {
+                    ((Animator)playerObjects["Base"].values["Animator"]).speed = 1f / PlayerExtensions.Pitch;
                 }
             }
 
@@ -710,12 +722,15 @@ namespace CreativePlayers
                         CreateBullet();
                     }
                 }
+
+                if (Input.GetKeyDown(KeyCode.F5))
+                    updatePlayer();
             }
         }
 
         bool canShoot = true;
 
-        private void FixedUpdate()
+        void FixedUpdate()
         {
             if (updateMode == TailUpdateMode.FixedUpdate)
             {
@@ -735,7 +750,7 @@ namespace CreativePlayers
             }
         }
 
-        private void LateUpdate()
+        void LateUpdate()
         {
             if (updateMode == TailUpdateMode.LateUpdate)
             {
@@ -1052,7 +1067,7 @@ namespace CreativePlayers
             lastPos = player.transform.position;
         }
 
-        private void UpdateSpeeds()
+        void UpdateSpeeds()
         {
             var currentModel = PlayerPlugin.CurrentModel(playerIndex);
 
@@ -1076,7 +1091,7 @@ namespace CreativePlayers
             maxBoostTime = bstmax / pitch;
         }
 
-        public void UpdateTailDistance()
+        void UpdateTailDistance()
         {
             path[0].pos = ((Transform)playerObjects["RB Parent"].values["Transform"]).position;
             path[0].rot = ((Transform)playerObjects["RB Parent"].values["Transform"]).rotation;
@@ -1112,7 +1127,7 @@ namespace CreativePlayers
             }
         }
 
-        public void UpdateTailTransform()
+        void UpdateTailTransform()
         {
             if (tailMode == 1)
                 return;
@@ -1132,7 +1147,7 @@ namespace CreativePlayers
             }
         }
 
-        public void UpdateTailDev()
+        void UpdateTailDev()
         {
             if (tailMode != 1)
                 return;
@@ -1171,7 +1186,7 @@ namespace CreativePlayers
             }
         }
 
-        private void UpdateTailSizes()
+        void UpdateTailSizes()
         {
             var currentModel = PlayerPlugin.CurrentModel(playerIndex);
             if (currentModel == null)
@@ -1181,6 +1196,27 @@ namespace CreativePlayers
                 var t2 = (Vector2)currentModel.values[string.Format("Tail {0} Scale", i)];
 
                 playerObjects[string.Format("Tail {0}", i)].gameObject.transform.localScale = new Vector3(t2.x, t2.y, 1f);
+            }
+        }
+
+        void UpdateTrailLengths()
+        {
+            if (PlayerPlugin.CurrentModel(playerIndex) == null)
+                return;
+
+            var currentModel = PlayerPlugin.CurrentModel(playerIndex);
+
+            var headTrail = (TrailRenderer)playerObjects["Head Trail"].values["TrailRenderer"];
+            var boostTrail = (TrailRenderer)playerObjects["Boost Trail"].values["TrailRenderer"];
+
+            headTrail.time = (float)currentModel.values["Head Trail Time"] / PlayerExtensions.Pitch;
+            boostTrail.time = (float)currentModel.values["Boost Trail Time"] / PlayerExtensions.Pitch;
+
+            for (int i = 1; i < 4; i++)
+            {
+                var tailTrail = (TrailRenderer)playerObjects[string.Format("Tail {0}", i)].values["TrailRenderer"];
+
+                tailTrail.time = (float)currentModel.values[string.Format("Tail {0} Trail Time", i)] / PlayerExtensions.Pitch;
             }
         }
 
@@ -1643,6 +1679,8 @@ namespace CreativePlayers
 
         #region Update Values
 
+        bool hasUpdated = false;
+
         public void updatePlayer()
         {
             var currentModel = PlayerPlugin.CurrentModel(playerIndex);
@@ -1856,7 +1894,7 @@ namespace CreativePlayers
                     {
                         CustomPlayer.health = 1;
                     }
-                    else
+                    else if (EditorManager.inst != null)
                     {
                         CustomPlayer.health = (int)currentModel.values["Base Health"];
                     }
@@ -1913,7 +1951,7 @@ namespace CreativePlayers
                     playerObjects["Head Trail"].gameObject.transform.localPosition = (Vector2)currentModel.values["Head Trail Position Offset"];
 
                     headTrail.enabled = (bool)currentModel.values["Head Trail Emitting"];
-                    headTrail.time = (float)currentModel.values["Head Trail Time"];
+                    //headTrail.time = (float)currentModel.values["Head Trail Time"];
                     headTrail.startWidth = (float)currentModel.values["Head Trail Start Width"];
                     headTrail.endWidth = (float)currentModel.values["Head Trail End Width"];
                 }
@@ -2005,7 +2043,7 @@ namespace CreativePlayers
                     var headTrail = (TrailRenderer)playerObjects["Boost Trail"].values["TrailRenderer"];
                     headTrail.enabled = (bool)currentModel.values["Boost Trail Emitting"];
                     headTrail.emitting = (bool)currentModel.values["Boost Trail Emitting"];
-                    headTrail.time = (float)currentModel.values["Boost Trail Time"];
+                    //headTrail.time = (float)currentModel.values["Boost Trail Time"];
                 }
 
                 //Boost Particles
@@ -2100,7 +2138,7 @@ namespace CreativePlayers
                         var headTrail = (TrailRenderer)playerObjects[string.Format("Tail {0}", i)].values["TrailRenderer"];
                         headTrail.enabled = (bool)currentModel.values[string.Format("Tail {0} Trail Emitting", i)];
                         headTrail.emitting = (bool)currentModel.values[string.Format("Tail {0} Trail Emitting", i)];
-                        headTrail.time = (float)currentModel.values[string.Format("Tail {0} Trail Time", i)];
+                        //headTrail.time = (float)currentModel.values[string.Format("Tail {0} Trail Time", i)];
                         headTrail.startWidth = (float)currentModel.values[string.Format("Tail {0} Trail Start Width", i)];
                         headTrail.endWidth = (float)currentModel.values[string.Format("Tail {0} Trail End Width", i)];
 
@@ -2187,6 +2225,7 @@ namespace CreativePlayers
                 }
             }
 
+            hasUpdated = true;
             CreateAll();
         }
 
