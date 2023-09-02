@@ -25,7 +25,7 @@ using RTFunctions.Functions.Managers;
 
 namespace CreativePlayers
 {
-    [BepInPlugin("com.mecha.creativeplayers", "Creative Players", "2.3.0")]
+    [BepInPlugin("com.mecha.creativeplayers", "Creative Players", "2.3.2")]
 	[BepInIncompatibility("com.mecha.playereditor")]
 	[BepInDependency("com.mecha.rtfunctions")]
 	[BepInProcess("Project Arrhythmia.exe")]
