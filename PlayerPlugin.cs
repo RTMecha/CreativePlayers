@@ -186,11 +186,11 @@ namespace CreativePlayers
 
 		[HarmonyPatch(typeof(InputDataManager), "AlivePlayers", MethodType.Getter)]
 		[HarmonyPrefix]
-		public static bool GetAlivePlayers(InputDataManager __instance, ref List<InputDataManager.CustomPlayer> __result)
+		static bool GetAlivePlayers(InputDataManager __instance, ref List<InputDataManager.CustomPlayer> __result)
         {
 			__result = __instance.players.FindAll(x => x.GetRTPlayer() != null && x.GetRTPlayer().PlayerAlive);
 			return false;
-        }
+		}
 
 		public static RTPlayer AssignPlayer(InputDataManager.CustomPlayer _player, Vector3 _pos, Color _col)
 		{

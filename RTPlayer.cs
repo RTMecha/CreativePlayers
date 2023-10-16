@@ -933,7 +933,7 @@ namespace CreativePlayers
                 lastMousePos = new Vector2(mousePosition.x, mousePosition.y);
             }
 
-            if ((!ModCompatibility.sharedFunctions.ContainsKey("EventsCoreEditorOffset") || !(bool)ModCompatibility.sharedFunctions["EventsCoreEditorOffset"]))
+            if ((!ModCompatibility.sharedFunctions.ContainsKey("EventsCoreEditorOffset") || !(bool)ModCompatibility.sharedFunctions["EventsCoreEditorOffset"]) && GameManager.inst.gameState == GameManager.State.Playing)
             {
                 Vector3 vector2 = Camera.main.WorldToViewportPoint(player.transform.position);
                 vector2.x = Mathf.Clamp(vector2.x, 0f, 1f);
@@ -1065,6 +1065,10 @@ namespace CreativePlayers
             }
 
             lastPos = player.transform.position;
+
+            var dfs = player.transform.localPosition;
+            dfs.z = 0f;
+            player.transform.localPosition = dfs;
         }
 
         void UpdateSpeeds()
@@ -1077,11 +1081,7 @@ namespace CreativePlayers
             var bstmin = (float)currentModel.values["Base Min Boost Time"];
             var bstmax = (float)currentModel.values["Base Max Boost Time"];
 
-            float pitch = AudioManager.inst.pitch;
-            if (pitch < 0f)
-            {
-                pitch = -pitch;
-            }
+            float pitch = PlayerExtensions.Pitch;
 
             idleSpeed = idl;
             boostSpeed = bst;
@@ -1089,6 +1089,14 @@ namespace CreativePlayers
             boostCooldown = bstcldwn / pitch;
             minBoostTime = bstmin / pitch;
             maxBoostTime = bstmax / pitch;
+
+            var anim = (Animator)playerObjects["Base"].values["Animator"];
+
+            float x = PlayerExtensions.Pitch;
+            if (GameManager.inst.gameState == GameManager.State.Paused)
+                x = 0f;
+
+            anim.speed = x;
         }
 
         void UpdateTailDistance()
@@ -1691,6 +1699,8 @@ namespace CreativePlayers
                 Destroy(canvas);
                 canvas = new GameObject("Name Tag Canvas" + (playerIndex + 1).ToString());
                 canvas.transform.SetParent(transform);
+                canvas.transform.localScale = Vector3.one;
+                canvas.transform.localRotation = Quaternion.identity;
 
                 var bae = Instantiate(ObjectManager.inst.objectPrefabs[0].options[0]);
                 bae.transform.SetParent(canvas.transform);

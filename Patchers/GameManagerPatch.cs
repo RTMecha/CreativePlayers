@@ -34,7 +34,7 @@ namespace CreativePlayers.Patchers
 			PlayerPlugin.playerModels.Add("0", pm1);
 			PlayerPlugin.playerModels.Add("1", pm2);
 
-			if (EditorManager.inst != null)
+			if (EditorManager.inst != null || PlayerPlugin.LoadFromGlobalPlayersInArcade.Value)
 				PlayerPlugin.StartLoadingModels();
 			else
 				PlayerPlugin.StartLoadingLocalModels();
