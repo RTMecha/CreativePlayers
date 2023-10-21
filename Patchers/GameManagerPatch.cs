@@ -22,7 +22,7 @@ namespace CreativePlayers.Patchers
 
 		[HarmonyPatch("Start")]
 		[HarmonyPostfix]
-		private static void StartPostfix(GameManager __instance)
+		static void StartPostfix(GameManager __instance)
         {
 			PlayerPlugin.playerModels = new Dictionary<string, PlayerModelClass.PlayerModel>();
 			var pm1 = new PlayerModelClass.PlayerModel(__instance.PlayerPrefabs[0]);
@@ -70,7 +70,7 @@ namespace CreativePlayers.Patchers
 
 		[HarmonyPatch("Update")]
 		[HarmonyPostfix]
-		private static void GameUpdatePostfix(GameManager __instance)
+		static void GameUpdatePostfix(GameManager __instance)
 		{
 			if (EditorManager.inst == null)
 			{
@@ -214,7 +214,7 @@ namespace CreativePlayers.Patchers
 
 		[HarmonyPatch("UpdateTheme")]
 		[HarmonyPostfix]
-		private static void UpdateThemePostfix(GameManager __instance)
+		static void UpdateThemePostfix(GameManager __instance)
 		{
 			DataManager.BeatmapTheme beatmapTheme = __instance.LiveTheme;
 			if (EditorManager.inst != null && EventEditor.inst.showTheme)
@@ -234,7 +234,7 @@ namespace CreativePlayers.Patchers
 
 		[HarmonyPatch("EndOfLevel")]
 		[HarmonyPrefix]
-		private static void QuitToArcadePostfix()
+		static void QuitToArcadePostfix()
         {
 			PlayerPlugin.players.Clear();
 		}

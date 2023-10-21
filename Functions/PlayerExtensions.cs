@@ -67,20 +67,11 @@ namespace CreativePlayers.Functions
             }
         }
 
-        public static RTPlayer GetRTPlayer(this InputDataManager.CustomPlayer _customPlayer)
-        {
-            return PlayerPlugin.players.Find(x => x.playerIndex == _customPlayer.index);
-        }
+        public static RTPlayer GetRTPlayer(this InputDataManager.CustomPlayer _customPlayer) => PlayerPlugin.players.Find(x => x.playerIndex == _customPlayer.index);
 
-        public static List<PlayerModelClass.PlayerModel> GetPlayerModels()
-        {
-            return PlayerPlugin.playerModels.Values.ToList();
-        }
+        public static List<PlayerModelClass.PlayerModel> GetPlayerModels() => PlayerPlugin.playerModels.Values.ToList();
 
-        public static string GetPlayerModelIndex(int index)
-        {
-            return PlayerPlugin.playerModelsIndex[index];
-        }
+        public static string GetPlayerModelIndex(int index) => PlayerPlugin.playerModelsIndex[index];
 
         public static void SetPlayerModelIndex(int index, int _id)
         {
@@ -89,10 +80,7 @@ namespace CreativePlayers.Functions
             PlayerPlugin.playerModelsIndex[index] = e;
         }
 
-        public static int GetPlayerModelInt(PlayerModelClass.PlayerModel _model)
-        {
-            return PlayerPlugin.playerModels.Values.ToList().IndexOf(_model);
-        }
+        public static int GetPlayerModelInt(PlayerModelClass.PlayerModel _model) => PlayerPlugin.playerModels.Values.ToList().IndexOf(_model);
 
         public static T GetItem<T>(this T _list, int index)
         {
@@ -101,10 +89,7 @@ namespace CreativePlayers.Functions
             return list[index];
         }
 
-        public static Vector2 ToVector2(this Vector3 _v)
-        {
-            return new Vector2(_v.x, _v.y);
-        }
+        public static Vector2 ToVector2(this Vector3 _v) => new Vector2(_v.x, _v.y);
 
         public static void GetResources()
         {
@@ -431,20 +416,5 @@ namespace CreativePlayers.Functions
 
             return str += "]";
         }
-
-        static Dictionary<string, GameObject> test = new Dictionary<string, GameObject>()
-        {
-            { "s", null }
-        };
-
-        //static void TesterDictionary()
-        //{
-        //    test.Add(new KeyValuePair<string, GameObject>("", new GameObject("")));
-        //}
-
-        //public static Dictionary<string, GameObject> test = new Dictionary<string, GameObject>
-        //{
-        //    NewKeyValuePair("", new GameObject(""))
-        //};
     }
 }

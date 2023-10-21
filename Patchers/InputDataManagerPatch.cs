@@ -11,7 +11,7 @@ namespace CreativePlayers.Patchers
     {
 		[HarmonyPatch("SetAllControllerRumble", new[] { typeof(float), typeof(float), typeof(bool) })]
 		[HarmonyPrefix]
-		private static bool SetAllControllerRumble(InputDataManager __instance, float __0, float __1, bool __2 = true)
+		static bool SetAllControllerRumble(InputDataManager __instance, float __0, float __1, bool __2 = true)
 		{
 			if (DataManager.inst.GetSettingBool("ControllerVibrate", true))
 			{
@@ -28,7 +28,7 @@ namespace CreativePlayers.Patchers
 
 		[HarmonyPatch("SetControllerRumble", new[] { typeof(int), typeof(float), typeof(float), typeof(bool) })]
 		[HarmonyPrefix]
-		private static bool SetControllerRumble(InputDataManager __instance, int __0, float __1, float __2, bool __3 = true)
+		static bool SetControllerRumble(InputDataManager __instance, int __0, float __1, float __2, bool __3 = true)
 		{
 			foreach (var customPlayer in __instance.players)
 			{
@@ -49,7 +49,7 @@ namespace CreativePlayers.Patchers
 
 		[HarmonyPatch("RemovePlayer")]
 		[HarmonyPrefix]
-		private static bool RemovePlayer(InputDataManager __instance, InputDataManager.CustomPlayer __0)
+		static bool RemovePlayer(InputDataManager __instance, InputDataManager.CustomPlayer __0)
 		{
 			int index = __0.index;
 			if (__0.GetRTPlayer() != null)

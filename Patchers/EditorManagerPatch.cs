@@ -15,7 +15,7 @@ namespace CreativePlayers.Patchers
 	{
 		[HarmonyPatch("Update")]
 		[HarmonyPostfix]
-		private static void EditorUpdatePostfix(EditorManager __instance)
+		static void EditorUpdatePostfix(EditorManager __instance)
 		{
 			foreach (InputDataManager.CustomPlayer customPlayer in InputDataManager.inst.players)
 			{
