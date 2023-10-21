@@ -30,7 +30,7 @@ namespace CreativePlayers
         //Player Parent Tree (original):
         //player-complete (has Player component)
         //player-complete/Player
-        //player-complete/Player/Player
+        //player-complete/Player/Player (has OnTriggerEnterPass component)
         //player-complete/Player/Player/death-explosion
         //player-complete/Player/Player/burst-explosion
         //player-complete/Player/Player/spawn-implosion
@@ -156,57 +156,27 @@ namespace CreativePlayers
 
         #region Properties
 
-        public InputDataManager.CustomPlayer CustomPlayer
-        {
-            get
-            {
-                return InputDataManager.inst.players[playerIndex];
-            }
-        }
+        public InputDataManager.CustomPlayer CustomPlayer => InputDataManager.inst.players[playerIndex];
 
         public bool CanTakeDamage
         {
-            get
-            {
-                return (!(EditorManager.inst == null) || DataManager.inst.GetSettingEnum("ArcadeDifficulty", 1) != 0 || !DataManager.inst.GetSettingBool("IsArcade")) && (!(EditorManager.inst == null) || GameManager.inst.gameState != GameManager.State.Paused) && (!(EditorManager.inst != null) || !EditorManager.inst.isEditing) && canTakeDamage;
-            }
-            set
-            {
-                canTakeDamage = value;
-            }
+            get => (!(EditorManager.inst == null) || DataManager.inst.GetSettingEnum("ArcadeDifficulty", 1) != 0 || !DataManager.inst.GetSettingBool("IsArcade")) && (!(EditorManager.inst == null) || GameManager.inst.gameState != GameManager.State.Paused) && (!(EditorManager.inst != null) || !EditorManager.inst.isEditing) && canTakeDamage;
+            set => canTakeDamage = value;
         }
 
         public bool CanMove
         {
-            get
-            {
-                return canMove;
-            }
-            set
-            {
-                canMove = value;
-            }
+            get => canMove;
+            set => canMove = value;
         }
 
         public bool CanBoost
         {
-            get
-            {
-                return (!(EditorManager.inst != null) || !EditorManager.inst.isEditing) && (canBoost && !isBoosting) && (GameManager.inst == null || GameManager.inst.gameState != GameManager.State.Paused) && !LSHelpers.IsUsingInputField();
-            }
-            set
-            {
-                canBoost = value;
-            }
+            get => (!(EditorManager.inst != null) || !EditorManager.inst.isEditing) && (canBoost && !isBoosting) && (GameManager.inst == null || GameManager.inst.gameState != GameManager.State.Paused) && !LSHelpers.IsUsingInputField();
+            set => canBoost = value;
         }
 
-        public bool PlayerAlive
-        {
-            get
-            {
-                return (!(InputDataManager.inst != null) || InputDataManager.inst.players.Count > 0) && (InputDataManager.inst != null && InputDataManager.inst.players[playerIndex].health > 0) && !isDead;
-            }
-        }
+        public bool PlayerAlive => (!(InputDataManager.inst != null) || InputDataManager.inst.players.Count > 0) && (InputDataManager.inst != null && InputDataManager.inst.players[playerIndex].health > 0) && !isDead;
 
         #endregion
 
@@ -279,6 +249,21 @@ namespace CreativePlayers
 
             circleCollider.isTrigger = EditorManager.inst != null && PlayerPlugin.ZenEditorIncludesSolid.Value && PlayerPlugin.ZenModeInEditor.Value;
             rb.GetComponent<Rigidbody2D>().collisionDetectionMode = CollisionDetectionMode2D.Continuous;
+
+            try
+            {
+                if (head.GetComponent<OnTriggerEnterPass>())
+                {
+                    Destroy(head.GetComponent<OnTriggerEnterPass>());
+
+                    var playerCollision = head.AddComponent<PlayerCollision>();
+                    playerCollision.player = this;
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.Log($"{PlayerPlugin.className}Error!\nEXCEPTION: {ex.Message}\nSTACKTRACE: {ex.StackTrace}");
+            }
 
             var boost = transform.Find("Player/boost").gameObject;
             boost.transform.localScale = Vector3.zero;
@@ -597,10 +582,13 @@ namespace CreativePlayers
             ((Animator)playerObjects["Base"].values["Animator"]).SetTrigger("spawn");
             PlaySpawnParticles();
             SetBindings(Actions);
+
+            EvaluateSpawnCode();
+
             Debug.LogFormat("{0}Spawned Player {1}", PlayerPlugin.className, playerIndex);
         }
 
-        private MyGameActions SetBindings(MyGameActions _actions)
+        MyGameActions SetBindings(MyGameActions _actions)
         {
             if (EditorManager.inst != null && InputDataManager.inst.players.Count < 2)
             {
@@ -1268,7 +1256,7 @@ namespace CreativePlayers
 
         #region Init
 
-        private void PlayerHit()
+        void PlayerHit()
         {
             var rb = (Rigidbody2D)playerObjects["RB Parent"].values["Rigidbody2D"];
             var anim = (Animator)playerObjects["Base"].values["Animator"];
@@ -1286,10 +1274,12 @@ namespace CreativePlayers
                 {
                     playerHitEvent(InputDataManager.inst.players[playerIndex].health, rb.position);
                 }
+
+                EvaluateHitCode();
             }
         }
 
-        private IEnumerator BoostCooldownLoop()
+        IEnumerator BoostCooldownLoop()
         {
             var player = playerObjects["RB Parent"].gameObject;
             var currentModel = PlayerPlugin.CurrentModel(playerIndex);
@@ -1323,7 +1313,7 @@ namespace CreativePlayers
             yield break;
         }
 
-        private IEnumerator Kill()
+        IEnumerator Kill()
         {
             Debug.LogFormat("{0}Player {1} died at {2} Controller: {3}", PlayerPlugin.className, playerIndex, AudioManager.inst.CurrentAudioSource.time, Actions.Device);
 
@@ -1336,6 +1326,7 @@ namespace CreativePlayers
             InputDataManager.inst.players[playerIndex].health = 0;
             ((Animator)playerObjects["Base"].values["Animator"]).SetTrigger("kill");
             InputDataManager.inst.SetControllerRumble(playerIndex, 1f);
+            EvaluateDeathCode();
             yield return new WaitForSecondsRealtime(0.2f);
             PlayerPlugin.players.Remove(this);
             Destroy(health);
@@ -1363,7 +1354,7 @@ namespace CreativePlayers
             CanTakeDamage = true;
         }
 
-        private void StartBoost()
+        void StartBoost()
         {
             if (CanBoost && !isBoosting)
             {
@@ -1403,6 +1394,8 @@ namespace CreativePlayers
                     animatingBoost = true;
                     playerObjects["Boost Tail Base"].gameObject.transform.DOScale(Vector3.zero, 0.05f / PlayerExtensions.Pitch).SetEase(DataManager.inst.AnimationList[2].Animation);
                 }
+
+                EvaluateBoostCode();
             }
         }
 
@@ -1654,7 +1647,7 @@ namespace CreativePlayers
                     var ps = (ParticleSystem)playerObjects["Head Particles"].values["ParticleSystem"];
                     var main = ps.main;
 
-                    main.startColor = GetColor(colStart, colStartHex);
+                    main.startColor = PlayerHelpers.GetColor(playerIndex, colStart, colStartHex);
                 }
                 if (playerObjects["Boost Trail"].values["TrailRenderer"] != null && (bool)currentModel.values["Boost Trail Emitting"])
                 {
@@ -1678,7 +1671,7 @@ namespace CreativePlayers
                     var ps = (ParticleSystem)playerObjects["Boost Particles"].values["ParticleSystem"];
                     var main = ps.main;
 
-                    main.startColor = GetColor(colStart, colHex);
+                    main.startColor = PlayerHelpers.GetColor(playerIndex, colStart, colHex);
                 }
             }
         }
@@ -2239,164 +2232,7 @@ namespace CreativePlayers
             CreateAll();
         }
 
-        public void updateParticlesCurvesBecauseTheySuck()
-        {
-            var currentModel = PlayerPlugin.CurrentModel(playerIndex);
-            //Head
-            {
-                var headParticles = (ParticleSystem)playerObjects["Head Particles"].values["ParticleSystem"];
-
-                var colorOverLifetime = headParticles.colorOverLifetime;
-                colorOverLifetime.enabled = true;
-                var psCol = colorOverLifetime.color;
-
-                float alphaStart = (float)currentModel.values["Head Particles Start Opacity"];
-                float alphaEnd = (float)currentModel.values["Head Particles End Opacity"];
-
-                if (psCol.gradient == null)
-                    psCol.gradient = new Gradient();
-                if (psCol.gradient.alphaKeys[0].alpha != alphaStart)
-                {
-                    psCol.gradient.alphaKeys[0].alpha = alphaStart;
-                    psCol.mode = ParticleSystemGradientMode.Color;
-                    psCol.mode = ParticleSystemGradientMode.Gradient;
-                }
-                if (psCol.gradient.alphaKeys[1].alpha != alphaEnd)
-                {
-                    psCol.gradient.alphaKeys[1].alpha = alphaEnd;
-                    psCol.mode = ParticleSystemGradientMode.Color;
-                    psCol.mode = ParticleSystemGradientMode.Gradient;
-                }
-
-                var sizeOverLifetime = headParticles.sizeOverLifetime;
-                sizeOverLifetime.enabled = true;
-
-                var ssss = sizeOverLifetime.size;
-
-                var sizeStart = (float)currentModel.values["Head Particles Start Scale"];
-                var sizeEnd = (float)currentModel.values["Head Particles End Scale"];
-
-                if (ssss.curve == null)
-                    ssss.curve = new AnimationCurve();
-                if (ssss.curve.keys[0].value != sizeStart)
-                {
-                    ssss.curve.keys[0].value = sizeStart;
-                    ssss.mode = ParticleSystemCurveMode.Constant;
-                    ssss.mode = ParticleSystemCurveMode.Curve;
-                }
-                if (ssss.curve.keys[1].value != sizeEnd)
-                {
-                    ssss.curve.keys[1].value = sizeEnd;
-                    ssss.mode = ParticleSystemCurveMode.Constant;
-                    ssss.mode = ParticleSystemCurveMode.Curve;
-                }
-            }
-
-            //Boost
-            {
-                var headParticles = (ParticleSystem)playerObjects["Boost Particles"].values["ParticleSystem"];
-
-                var colorOverLifetime = headParticles.colorOverLifetime;
-                colorOverLifetime.enabled = true;
-                var psCol = colorOverLifetime.color;
-
-                float alphaStart = (float)currentModel.values["Boost Particles Start Opacity"];
-                float alphaEnd = (float)currentModel.values["Boost Particles End Opacity"];
-
-                if (psCol.gradient == null)
-                    psCol.gradient = new Gradient();
-                if (psCol.gradient.alphaKeys[0].alpha != alphaStart)
-                {
-                    psCol.gradient.alphaKeys[0].alpha = alphaStart;
-                    psCol.mode = ParticleSystemGradientMode.Color;
-                    psCol.mode = ParticleSystemGradientMode.Gradient;
-                }
-                if (psCol.gradient.alphaKeys[1].alpha != alphaEnd)
-                {
-                    psCol.gradient.alphaKeys[1].alpha = alphaEnd;
-                    psCol.mode = ParticleSystemGradientMode.Color;
-                    psCol.mode = ParticleSystemGradientMode.Gradient;
-                }
-
-                var sizeOverLifetime = headParticles.sizeOverLifetime;
-                sizeOverLifetime.enabled = true;
-
-                var ssss = sizeOverLifetime.size;
-
-                var sizeStart = (float)currentModel.values["Boost Particles Start Scale"];
-                var sizeEnd = (float)currentModel.values["Boost Particles End Scale"];
-
-                if (ssss.curve == null)
-                    ssss.curve = new AnimationCurve();
-                if (ssss.curve.keys[0].value != sizeStart)
-                {
-                    ssss.curve.keys[0].value = sizeStart;
-                    ssss.mode = ParticleSystemCurveMode.Constant;
-                    ssss.mode = ParticleSystemCurveMode.Curve;
-                }
-                if (ssss.curve.keys[0].value != sizeEnd)
-                {
-                    ssss.curve.keys[0].value = sizeEnd;
-                    ssss.mode = ParticleSystemCurveMode.Constant;
-                    ssss.mode = ParticleSystemCurveMode.Curve;
-                }
-            }
-
-            //Tails
-            {
-                for (int i = 1; i < 4; i++)
-                {
-                    var headParticles = (ParticleSystem)playerObjects[string.Format("Tail {0} Particles", i)].values["ParticleSystem"];
-
-                    var colorOverLifetime = headParticles.colorOverLifetime;
-                    colorOverLifetime.enabled = true;
-                    var psCol = colorOverLifetime.color;
-
-                    float alphaStart = (float)currentModel.values[string.Format("Tail {0} Particles Start Opacity", i)];
-                    float alphaEnd = (float)currentModel.values[string.Format("Tail {0} Particles End Opacity", i)];
-
-                    if (psCol.gradient == null)
-                        psCol.gradient = new Gradient();
-                    if (psCol.gradient.alphaKeys[0].alpha != alphaStart)
-                    {
-                        psCol.gradient.alphaKeys[0].alpha = alphaStart;
-                        psCol.mode = ParticleSystemGradientMode.Color;
-                        psCol.mode = ParticleSystemGradientMode.Gradient;
-                    }
-                    if (psCol.gradient.alphaKeys[1].alpha != alphaEnd)
-                    {
-                        psCol.gradient.alphaKeys[1].alpha = alphaEnd;
-                        psCol.mode = ParticleSystemGradientMode.Color;
-                        psCol.mode = ParticleSystemGradientMode.Gradient;
-                    }
-
-                    var sizeOverLifetime = headParticles.sizeOverLifetime;
-                    sizeOverLifetime.enabled = true;
-
-                    var ssss = sizeOverLifetime.size;
-
-                    var sizeStart = (float)currentModel.values[string.Format("Tail {0} Particles Start Scale", i)];
-                    var sizeEnd = (float)currentModel.values[string.Format("Tail {0} Particles End Scale", i)];
-
-                    if (ssss.curve == null)
-                        ssss.curve = new AnimationCurve();
-                    if (ssss.curve.keys[0].value != sizeStart)
-                    {
-                        ssss.curve.keys[0].value = sizeStart;
-                        ssss.mode = ParticleSystemCurveMode.Constant;
-                        ssss.mode = ParticleSystemCurveMode.Curve;
-                    }
-                    if (ssss.curve.keys[1].value != sizeEnd)
-                    {
-                        ssss.curve.keys[1].value = sizeEnd;
-                        ssss.mode = ParticleSystemCurveMode.Constant;
-                        ssss.mode = ParticleSystemCurveMode.Curve;
-                    }
-                }
-            }
-        }
-
-        public void updateCustomObjects(string id = "")
+        void updateCustomObjects(string id = "")
         {
             if (customObjects.Count > 0)
             {
@@ -2485,7 +2321,7 @@ namespace CreativePlayers
             }
         }
 
-        public void CreateAll()
+        void CreateAll()
         {
             var currentModel = PlayerPlugin.CurrentModel(playerIndex);
 
@@ -2570,7 +2406,7 @@ namespace CreativePlayers
             return obj;
         }
 
-        public void UpdateCustomTheme()
+        void UpdateCustomTheme()
         {
             if (customObjects.Count > 0)
                 foreach (var obj in customObjects.Values)
@@ -2773,7 +2609,7 @@ namespace CreativePlayers
 
         #region Actions
 
-        public void CreatePulse()
+        void CreatePulse()
         {
             var currentModel = PlayerPlugin.CurrentModel(playerIndex);
 
@@ -2871,7 +2707,7 @@ namespace CreativePlayers
             });
         }
 
-        public void UpdateBoostTheme()
+        void UpdateBoostTheme()
         {
             if (boosts.Count > 0)
             {
@@ -2902,7 +2738,7 @@ namespace CreativePlayers
 
         public List<PlayerObject> boosts = new List<PlayerObject>();
 
-        public void PlaySound(AudioClip _clip, float pitch = 1f)
+        void PlaySound(AudioClip _clip, float pitch = 1f)
         {
             float p = pitch * PlayerExtensions.Pitch;
 
@@ -2916,7 +2752,7 @@ namespace CreativePlayers
             StartCoroutine(AudioManager.inst.DestroyWithDelay(audioSource, _clip.length / p));
         }
 
-        public void CreateBullet()
+        void CreateBullet()
         {
             if (PlayerPlugin.PlayerShootSound.Value)
                 PlaySound(AudioManager.inst.GetSound("boost"), 0.7f);
@@ -3060,7 +2896,7 @@ namespace CreativePlayers
             });
         }
 
-        private IEnumerator CanShoot()
+        IEnumerator CanShoot()
         {
             var currentModel = PlayerPlugin.CurrentModel(playerIndex);
             if (currentModel != null)
@@ -3073,6 +2909,87 @@ namespace CreativePlayers
             yield break;
         }
 
+        #endregion
+
+        #region Code
+
+        public string SpawnCodePath => "player/spawn.cs";
+        public string BoostCodePath => "player/boost.cs";
+        public string HitCodePath => "player/hit.cs";
+        public string DeathCodePath => "player/death.cs";
+
+        void EvaluateSpawnCode()
+        {
+            if (!PlayerPlugin.EvaluateCode.Value)
+                return;
+
+            string path = RTFile.basePath + SpawnCodePath;
+
+            if (RTFile.FileExists(RTFile.ApplicationDirectory + path))
+            {
+                var def = $"var playerIndex = {playerIndex};{Environment.NewLine}";
+
+                string cs = FileManager.inst.LoadJSONFile(RTFile.basePath + path);
+
+                if (!cs.Contains("System.IO.File.") && !cs.Contains("File."))
+                    RTCode.Evaluate($"{def}{cs}");
+            }
+        }
+
+        void EvaluateBoostCode()
+        {
+            if (!PlayerPlugin.EvaluateCode.Value)
+                return;
+
+            string path = RTFile.basePath + BoostCodePath;
+
+            if (RTFile.FileExists(RTFile.ApplicationDirectory + path))
+            {
+                var def = $"var playerIndex = {playerIndex};{Environment.NewLine}";
+
+                string cs = FileManager.inst.LoadJSONFile(RTFile.basePath + path);
+
+                if (!cs.Contains("System.IO.File.") && !cs.Contains("File."))
+                    RTCode.Evaluate($"{def}{cs}");
+            }
+        }
+
+        void EvaluateHitCode()
+        {
+            if (!PlayerPlugin.EvaluateCode.Value)
+                return;
+
+            string path = RTFile.basePath + HitCodePath;
+
+            if (RTFile.FileExists(RTFile.ApplicationDirectory + path))
+            {
+                var def = $"var playerIndex = {playerIndex};{Environment.NewLine}";
+
+                string cs = FileManager.inst.LoadJSONFile(RTFile.basePath + path);
+
+                if (!cs.Contains("System.IO.File.") && !cs.Contains("File."))
+                    RTCode.Evaluate($"{def}{cs}");
+            }
+        }
+
+        void EvaluateDeathCode()
+        {
+            if (!PlayerPlugin.EvaluateCode.Value)
+                return;
+
+            string path = RTFile.basePath + DeathCodePath;
+
+            if (RTFile.FileExists(RTFile.ApplicationDirectory + path))
+            {
+                var def = $"var playerIndex = {playerIndex};{Environment.NewLine}";
+
+                string cs = FileManager.inst.LoadJSONFile(RTFile.basePath + path);
+
+                if (!cs.Contains("System.IO.File.") && !cs.Contains("File."))
+                    RTCode.Evaluate($"{def}{cs}");
+            }
+        }
+        
         #endregion
 
         public KeyCode GetKeyCode(int key)

@@ -25,7 +25,7 @@ using RTFunctions.Functions.Managers;
 
 namespace CreativePlayers
 {
-    [BepInPlugin("com.mecha.creativeplayers", "Creative Players", "2.3.2")]
+    [BepInPlugin("com.mecha.creativeplayers", "Creative Players", "2.3.3")]
 	[BepInIncompatibility("com.mecha.playereditor")]
 	[BepInDependency("com.mecha.rtfunctions")]
 	[BepInProcess("Project Arrhythmia.exe")]
@@ -108,7 +108,9 @@ namespace CreativePlayers
 
 		public static ConfigEntry<bool> Debugger { get; set; }
 
-        private void Awake()
+		public static ConfigEntry<bool> EvaluateCode { get; set; }
+
+        void Awake()
         {
             inst = this;
             // Plugin startup logic
@@ -132,6 +134,7 @@ namespace CreativePlayers
 			PlayerShootKey = Config.Bind("Player", "Shoot Key", Key.Z, "Keyboard key to press to shoot. Requires restart if changed.");
 			PlayerShootSound = Config.Bind("Player", "Play Shoot Sound", true, "Plays a little sound when you shoot.");
 			AllowPlayersToTakeBulletDamage = Config.Bind("Player", "Shots hurt other players", false, "Disable this if you don't want players to kill each other.");
+			EvaluateCode = Config.Bind("Player", "Evaluate Code", false, ".cs files from the player folder in the level path will run. E.G. boost.cs will run when the player boosts. Each code includes a stored \"playerIndex\" variable in case you want to check which player is performing the action.");
 
 			Player1Index = Config.Bind("Loading", "Player 1 Model", "0", "The player uses this specific model ID.");
 			Player2Index = Config.Bind("Loading", "Player 2 Model", "0", "The player uses this specific model ID.");
