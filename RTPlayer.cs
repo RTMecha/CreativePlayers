@@ -2903,8 +2903,8 @@ namespace CreativePlayers
             {
                 var delay = (float)currentModel.values["Bullet Delay Amount"];
                 yield return new WaitForSeconds(delay);
-                canShoot = true;
             }
+            canShoot = true;
 
             yield break;
         }
@@ -2929,7 +2929,7 @@ namespace CreativePlayers
             {
                 var def = $"var playerIndex = {playerIndex};{Environment.NewLine}";
 
-                string cs = FileManager.inst.LoadJSONFile(RTFile.basePath + path);
+                string cs = FileManager.inst.LoadJSONFile(path);
 
                 if (!cs.Contains("System.IO.File.") && !cs.Contains("File."))
                     RTCode.Evaluate($"{def}{cs}");
@@ -2947,7 +2947,7 @@ namespace CreativePlayers
             {
                 var def = $"var playerIndex = {playerIndex};{Environment.NewLine}";
 
-                string cs = FileManager.inst.LoadJSONFile(RTFile.basePath + path);
+                string cs = FileManager.inst.LoadJSONFile(path);
 
                 if (!cs.Contains("System.IO.File.") && !cs.Contains("File."))
                     RTCode.Evaluate($"{def}{cs}");
@@ -2965,7 +2965,7 @@ namespace CreativePlayers
             {
                 var def = $"var playerIndex = {playerIndex};{Environment.NewLine}";
 
-                string cs = FileManager.inst.LoadJSONFile(RTFile.basePath + path);
+                string cs = FileManager.inst.LoadJSONFile(path);
 
                 if (!cs.Contains("System.IO.File.") && !cs.Contains("File."))
                     RTCode.Evaluate($"{def}{cs}");
@@ -2983,7 +2983,7 @@ namespace CreativePlayers
             {
                 var def = $"var playerIndex = {playerIndex};{Environment.NewLine}";
 
-                string cs = FileManager.inst.LoadJSONFile(RTFile.basePath + path);
+                string cs = FileManager.inst.LoadJSONFile(path);
 
                 if (!cs.Contains("System.IO.File.") && !cs.Contains("File."))
                     RTCode.Evaluate($"{def}{cs}");

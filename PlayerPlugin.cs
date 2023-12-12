@@ -25,8 +25,7 @@ using RTFunctions.Functions.Managers;
 
 namespace CreativePlayers
 {
-    [BepInPlugin("com.mecha.creativeplayers", "Creative Players", "2.3.3")]
-	[BepInIncompatibility("com.mecha.playereditor")]
+    [BepInPlugin("com.mecha.creativeplayers", "Creative Players", "2.3.4")]
 	[BepInDependency("com.mecha.rtfunctions")]
 	[BepInProcess("Project Arrhythmia.exe")]
 	public class PlayerPlugin : BaseUnityPlugin
@@ -36,17 +35,11 @@ namespace CreativePlayers
 
 		public static bool debug = false;
 
-		public static string VersionNumber
-        {
-			get
-            {
-				return PluginInfo.PLUGIN_VERSION;
-            }
-        }
 
         public static PlayerPlugin inst;
-        public static string className = "[<color=#FFD800>CreativePlayers</color>] " + PluginInfo.PLUGIN_VERSION + "\n";
+        public static string className = $"[<color=#FFD800>CreativePlayers</color>] {VersionNumber}\n";
         private readonly Harmony harmony = new Harmony("CreativePlayers");
+		public static string VersionNumber => PluginInfo.PLUGIN_VERSION;
 
 		public static List<RTPlayer> players = new List<RTPlayer>();
 
@@ -113,8 +106,6 @@ namespace CreativePlayers
         void Awake()
         {
             inst = this;
-            // Plugin startup logic
-            Logger.LogInfo("Plugin Creative Players is loaded!");
 
 			Debugger = Config.Bind("Debug", "CreativePlayers Logs Enabled", false);
 
@@ -166,6 +157,17 @@ namespace CreativePlayers
 			playerModelsIndex.Add(1, "0");
 			playerModelsIndex.Add(2, "0");
 			playerModelsIndex.Add(3, "0");
+
+            if (!ModCompatibility.mods.ContainsKey("CreativePlayers"))
+            {
+                var mod = new ModCompatibility.Mod(inst, GetType());
+                mod.version = VersionNumber;
+                mod.methods.Add("updatePlayer", GetType().GetMethod("updatePlayers"));
+
+                ModCompatibility.mods.Add("CreativePlayers", mod);
+            }
+
+            Logger.LogInfo("Plugin Creative Players is loaded!");
 		}
 
 		void Update()
@@ -174,18 +176,23 @@ namespace CreativePlayers
 				players.Clear();
         }
 
-		private static void UpdateSettings(object sender, EventArgs e)
+		static void UpdateSettings(object sender, EventArgs e)
         {
-			if (players.Count > 0)
-            {
-				foreach (var player in players)
-                {
-					player.updatePlayer();
-				}
-            }
+			updatePlayers();
 
 			debug = Debugger.Value;
         }
+
+		public static void updatePlayers()
+		{
+			if (players.Count > 0 && EditorManager.inst != null)
+			{
+				foreach (var player in players)
+				{
+					player.updatePlayer();
+				}
+			}
+		}
 
 		[HarmonyPatch(typeof(InputDataManager), "AlivePlayers", MethodType.Getter)]
 		[HarmonyPrefix]
@@ -500,7 +507,8 @@ namespace CreativePlayers
 					}
 				}
 			}
-			else if (!LoadFromGlobalPlayersInArcade.Value && EditorManager.inst == null)
+			//else if (!LoadFromGlobalPlayersInArcade.Value && EditorManager.inst == null)
+			else if (!LoadFromGlobalPlayersInArcade.Value)
 			{
 				Debug.LogErrorFormat("{0}player.lspl file does not exist:, setting to default player", className);
 				for (int i = 0; i < playerModelsIndex.Count; i++)
@@ -554,9 +562,6 @@ namespace CreativePlayers
 
 			var files = Directory.GetFiles(RTFile.ApplicationDirectory + "beatmaps/players");
 
-			var pm = new List<PlayerModelClass.PlayerModel>();
-			string dd = "";
-
 			if (files.Length > 0)
 			{
 				foreach (var file in files)
@@ -568,17 +573,13 @@ namespace CreativePlayers
 						if (RTFile.FileExists(filename))
 						{
 							string json = FileManager.inst.LoadJSONFileRaw(filename);
-							JSONNode jn = JSON.Parse(json);
+							var jn = JSON.Parse(json);
 
 							if ((string)jn["base"]["id"] == id)
 							{
 								var model = PlayerData.LoadPlayer(filename);
-								string name = (string)model.values["Base ID"];
-								if (name == id)
-									dd = filename;
 
-								model.filePath = file;
-
+								model.filePath = file.Replace(".lspl", "_clone.lspl");
 
 								model.values["Base Name"] += " Clone";
 								model.values["Base ID"] = LSFunctions.LSText.randomNumString(16);
