@@ -39,7 +39,7 @@ namespace CreativePlayers.Patchers
                 inst = (SoundLibrary)AudioManager.inst.GetType().GetField("library", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).GetValue(AudioManager.inst);
             }
 
-            string path = RTFile.ApplicationDirectory + RTFile.basePath + "SoundGroups";
+            string path = RTFile.BasePath + "SoundGroups";
             if (RTFile.DirectoryExists(path))
             {
                 var dictionary = new Dictionary<string, AudioClip[]>();

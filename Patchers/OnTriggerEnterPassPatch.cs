@@ -24,8 +24,6 @@ namespace CreativePlayers.Patchers
 		[HarmonyPrefix]
 		static bool OnTriggerEnter2DPrefix(OnTriggerEnterPass __instance, Collider2D __0)
 		{
-			if (__instance.transform.parent.GetComponent<RTPlayer>())
-				__instance.transform.parent.GetComponent<RTPlayer>().OnChildTriggerEnter(__0);
 			return false;
 		}
 
@@ -33,7 +31,6 @@ namespace CreativePlayers.Patchers
 		[HarmonyPrefix]
 		static bool OnTriggerEnterPrefix(OnTriggerEnterPass __instance, Collider __0)
 		{
-			__instance.transform.parent.GetComponent<RTPlayer>().OnChildTriggerEnterMesh(__0);
 			return false;
 		}
 
@@ -41,7 +38,6 @@ namespace CreativePlayers.Patchers
 		[HarmonyPrefix]
 		static bool OnTriggerStay2DPrefix(OnTriggerEnterPass __instance, Collider2D __0)
 		{
-			__instance.transform.parent.GetComponent<RTPlayer>().OnChildTriggerStay(__0);
 			return false;
 		}
 
@@ -49,7 +45,6 @@ namespace CreativePlayers.Patchers
 		[HarmonyPrefix]
 		static bool OnTriggerStayPrefix(OnTriggerEnterPass __instance, Collider __0)
 		{
-			__instance.transform.parent.GetComponent<RTPlayer>().OnChildTriggerStayMesh(__0);
 			return false;
 		}
 	}

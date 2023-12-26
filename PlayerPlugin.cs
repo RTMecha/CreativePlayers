@@ -16,61 +16,43 @@ using InControl;
 using SimpleJSON;
 
 using CreativePlayers.Patchers;
-using CreativePlayers.Functions;
-using CreativePlayers.Functions.Data;
 
 using RTFunctions.Functions;
+using RTFunctions.Functions.Components.Player;
+using RTFunctions.Functions.Data.Player;
 using RTFunctions.Functions.IO;
 using RTFunctions.Functions.Managers;
 
 namespace CreativePlayers
 {
-    [BepInPlugin("com.mecha.creativeplayers", "Creative Players", "2.3.4")]
+    [BepInPlugin("com.mecha.creativeplayers", "Creative Players", "2.4.0")]
 	[BepInDependency("com.mecha.rtfunctions")]
 	[BepInProcess("Project Arrhythmia.exe")]
 	public class PlayerPlugin : BaseUnityPlugin
     {
-		//Updates:
-		//Fixed Zen Mode visibility in editor.
-
-		public static bool debug = false;
-
-
         public static PlayerPlugin inst;
         public static string className = $"[<color=#FFD800>CreativePlayers</color>] {VersionNumber}\n";
         private readonly Harmony harmony = new Harmony("CreativePlayers");
 		public static string VersionNumber => PluginInfo.PLUGIN_VERSION;
 
-		public static List<RTPlayer> players = new List<RTPlayer>();
-
 		public static int currentModelIndex = 0;
 
-		public static Dictionary<int, string> playerModelsIndex = new Dictionary<int, string>();
-
-		public static Dictionary<string, PlayerModelClass.PlayerModel> playerModels = new Dictionary<string, PlayerModelClass.PlayerModel>();
-
-		public static GameObject healthImages;
-		public static Transform healthParent;
-		public static Sprite healthSprite;
-
-		public static PlayerModelClass.PlayerModel CurrentModel(int index) 
+		public static PlayerModel CurrentModel(int index) 
 		{
 			var num = index % 4;
 
-			if (playerModelsIndex.ContainsKey(num) && playerModels.ContainsKey(playerModelsIndex[num]) && playerModels[playerModelsIndex[num]].gm != null && (!LoadFromGlobalPlayersInArcade.Value))
+			if (PlayerManager.PlayerModelsIndex.ContainsKey(num) && PlayerManager.PlayerModels.ContainsKey(PlayerManager.PlayerModelsIndex[num]) && PlayerManager.PlayerModels[PlayerManager.PlayerModelsIndex[num]].gm != null && (!LoadFromGlobalPlayersInArcade.Value))
 			{
-				return playerModels[playerModelsIndex[num]];
+				return PlayerManager.PlayerModels[PlayerManager.PlayerModelsIndex[num]];
 			}
-			else if (PlayerIndexes.Count > num && playerModels.ContainsKey(PlayerIndexes[num].Value.ToString()) && playerModels[PlayerIndexes[num].Value.ToString()].gm != null && LoadFromGlobalPlayersInArcade.Value)
+			else if (PlayerManager.PlayerIndexes.Count > num && PlayerManager.PlayerModels.ContainsKey(PlayerManager.PlayerIndexes[num].Value.ToString()) && PlayerManager.PlayerModels[PlayerManager.PlayerIndexes[num].Value.ToString()].gm != null && LoadFromGlobalPlayersInArcade.Value)
 			{
-				return playerModels[PlayerIndexes[num].Value.ToString()];
+				return PlayerManager.PlayerModels[PlayerManager.PlayerIndexes[num].Value.ToString()];
 			}
 			else
 			{
-				return playerModels["0"];
+				return PlayerManager.PlayerModels["0"];
 			}
-
-			//return playerModels[playerModelsIndex[index % 4]];
 		}
 
 		public static Dictionary<string, AudioClip> OriginalSounds = new Dictionary<string, AudioClip>();
@@ -80,13 +62,6 @@ namespace CreativePlayers
 		public static ConfigEntry<bool> PlayerNameTags { get; set; }
 
 		public static ConfigEntry<bool> LoadFromGlobalPlayersInArcade { get; set; }
-
-		public static ConfigEntry<string> Player1Index { get; set; }
-		public static ConfigEntry<string> Player2Index { get; set; }
-		public static ConfigEntry<string> Player3Index { get; set; }
-		public static ConfigEntry<string> Player4Index { get; set; }
-
-		public static List<ConfigEntry<string>> PlayerIndexes = new List<ConfigEntry<string>>();
 
 		public static ConfigEntry<bool> PlaySoundB { get; set; }
 		public static ConfigEntry<bool> PlaySoundR { get; set; }
@@ -109,7 +84,6 @@ namespace CreativePlayers
 
 			Debugger = Config.Bind("Debug", "CreativePlayers Logs Enabled", false);
 
-			ZenModeInEditor = Config.Bind("Game", "Zen Mode", false, "If enabled, the player will not take damage in the editor.");
 			PlayerNameTags = Config.Bind("Game", "Multiplayer NameTags", false, "If enabled and if there's more than one person playing, nametags will show which player is which (WIP).");
 			AssetsGlobal = Config.Bind("Game", "Assets Global Source", false, "Assets will use BepInEx/plugins/Assets as the folder instead of the local level folder.");
 			LoadFromGlobalPlayersInArcade = Config.Bind("Loading", "Always use global source", false, "Makes the player models always load from beatmaps/players for entering an arcade level. If disabled, players will be loaded from the local players.lspl file.");
@@ -127,198 +101,79 @@ namespace CreativePlayers
 			AllowPlayersToTakeBulletDamage = Config.Bind("Player", "Shots hurt other players", false, "Disable this if you don't want players to kill each other.");
 			EvaluateCode = Config.Bind("Player", "Evaluate Code", false, ".cs files from the player folder in the level path will run. E.G. boost.cs will run when the player boosts. Each code includes a stored \"playerIndex\" variable in case you want to check which player is performing the action.");
 
-			Player1Index = Config.Bind("Loading", "Player 1 Model", "0", "The player uses this specific model ID.");
-			Player2Index = Config.Bind("Loading", "Player 2 Model", "0", "The player uses this specific model ID.");
-			Player3Index = Config.Bind("Loading", "Player 3 Model", "0", "The player uses this specific model ID.");
-			Player4Index = Config.Bind("Loading", "Player 4 Model", "0", "The player uses this specific model ID.");
-
 			Config.SettingChanged += new EventHandler<SettingChangedEventArgs>(UpdateSettings);
 
-			PlayerIndexes.Add(Player1Index);
-			PlayerIndexes.Add(Player2Index);
-			PlayerIndexes.Add(Player3Index);
-			PlayerIndexes.Add(Player4Index);
+			PlayerManager.PlayerIndexes.Add(Config.Bind("Loading", "Player 1 Model", "0", "The player uses this specific model ID."));
+			PlayerManager.PlayerIndexes.Add(Config.Bind("Loading", "Player 2 Model", "0", "The player uses this specific model ID."));
+			PlayerManager.PlayerIndexes.Add(Config.Bind("Loading", "Player 3 Model", "0", "The player uses this specific model ID."));
+			PlayerManager.PlayerIndexes.Add(Config.Bind("Loading", "Player 4 Model", "0", "The player uses this specific model ID."));
 
-			harmony.PatchAll(typeof(PlayerPlugin));
-            harmony.PatchAll(typeof(InputDataManagerPatch));
-            harmony.PatchAll(typeof(GameManagerPatch));
-            harmony.PatchAll(typeof(CustomPlayerPatch));
-            harmony.PatchAll(typeof(EditorManagerPatch));
-            harmony.PatchAll(typeof(OnTriggerEnterPassPatch));
-            harmony.PatchAll(typeof(PlayerPatch));
-			harmony.PatchAll(typeof(MyGameActionsPatch));
-			harmony.PatchAll(typeof(SoundLibraryPatch));
-
-			GameObject spr = new GameObject("SpriteManager for Player");
-			DontDestroyOnLoad(spr);
-			spr.AddComponent<SpriteManager>();
-
-			playerModelsIndex.Add(0, "0");
-			playerModelsIndex.Add(1, "0");
-			playerModelsIndex.Add(2, "0");
-			playerModelsIndex.Add(3, "0");
+			harmony.PatchAll();
 
             if (!ModCompatibility.mods.ContainsKey("CreativePlayers"))
             {
                 var mod = new ModCompatibility.Mod(inst, GetType());
                 mod.version = VersionNumber;
-                mod.methods.Add("updatePlayer", GetType().GetMethod("updatePlayers"));
 
                 ModCompatibility.mods.Add("CreativePlayers", mod);
             }
 
-            Logger.LogInfo("Plugin Creative Players is loaded!");
-		}
+			PlayerManager.SaveLocalModels = SaveLocalModels;
+			PlayerManager.LoadLocalModels = StartLoadingLocalModels;
+			PlayerManager.CreateNewPlayerModel = CreateNewPlayerModel;
+			PlayerManager.SaveGlobalModels = SavePlayerModels;
+			PlayerManager.LoadGlobalModels = StartLoadingModels;
 
-		void Update()
-        {
-			if (GameManager.inst == null)
-				players.Clear();
-        }
+			PlayerManager.LoadIndexes = LoadIndexes;
+			PlayerManager.ClearPlayerModels = ClearPlayerModels;
+			PlayerManager.SetPlayerModel = SetPlayerModel;
+			PlayerManager.DuplicatePlayerModel = DuplicatePlayerModel;
+
+			SetConfigs();
+
+			Logger.LogInfo("Plugin Creative Players is loaded!");
+		}
 
 		static void UpdateSettings(object sender, EventArgs e)
         {
-			updatePlayers();
-
-			debug = Debugger.Value;
-        }
-
-		public static void updatePlayers()
-		{
-			if (players.Count > 0 && EditorManager.inst != null)
-			{
-				foreach (var player in players)
-				{
-					player.updatePlayer();
-				}
-			}
+			SetConfigs();
+			PlayerManager.UpdatePlayers();
 		}
 
-		[HarmonyPatch(typeof(InputDataManager), "AlivePlayers", MethodType.Getter)]
-		[HarmonyPrefix]
-		static bool GetAlivePlayers(InputDataManager __instance, ref List<InputDataManager.CustomPlayer> __result)
-        {
-			__result = __instance.players.FindAll(x => x.GetRTPlayer() != null && x.GetRTPlayer().PlayerAlive);
-			return false;
-		}
-
-		public static RTPlayer AssignPlayer(InputDataManager.CustomPlayer _player, Vector3 _pos, Color _col)
+		public static void SetConfigs()
 		{
-			Debug.Log("Creating New Player");
+			RTPlayer.UpdateMode = TailUpdateMode.Value;
+			RTPlayer.ShowNameTags = PlayerNameTags.Value;
+			RTPlayer.AssetsGlobal = AssetsGlobal.Value;
+			RTPlayer.PlayBoostSound = PlaySoundB.Value;
+			RTPlayer.PlayBoostRecoverSound = PlaySoundR.Value;
+			RTPlayer.ZenEditorIncludesSolid = ZenEditorIncludesSolid.Value;
 
-			GameObject objAssign = CurrentModel(_player.index % 4).gm;
+			FaceController.ShootControl = PlayerShootControl.Value;
+			FaceController.ShootKey = PlayerShootKey.Value;
 
-			GameObject gameObject = Instantiate(objAssign);
-			gameObject.layer = 8;
-			gameObject.name = "Player " + (_player.index + 1);
-			gameObject.SetActive(true);
-			if (gameObject.GetComponent<Player>())
-            {
-				Destroy(gameObject.GetComponent<Player>());
-            }
-			if (gameObject.GetComponentInChildren<PlayerTrail>())
-            {
-				Destroy(gameObject.GetComponentInChildren<PlayerTrail>());
-            }
+			RTPlayer.PlayShootSound = PlayerShootSound.Value;
+			RTPlayer.AllowPlayersToTakeBulletDamage = AllowPlayersToTakeBulletDamage.Value;
+			RTPlayer.EvaluateCode = EvaluateCode.Value;
 
-			if (!gameObject.GetComponent<RTPlayer>())
-            {
-				gameObject.AddComponent<RTPlayer>();
-            }
-
-			var player = gameObject.GetComponent<RTPlayer>();
-
-			player.playerIndex = _player.index;
-			player.updateMode = TailUpdateMode.Value;
-
-			player.updatePlayer();
-
-			if (_player.device == null)
-            {
-				player.Actions = (MyGameActions)AccessTools.Field(typeof(InputDataManager), "keyboardListener").GetValue(InputDataManager.inst);
-				player.isKeyboard = true;
-
-				if (EditorManager.inst != null && InputDataManager.inst.players.Count == 1)
-                {
-					player.faceController = FaceController.CreateWithBothBindings();
-                }
-				else
-				{
-					player.faceController = FaceController.CreateWithKeyboardBindings();
-				}
-			}
-			else
-			{
-				MyGameActions myGameActions = MyGameActions.CreateWithJoystickBindings();
-				myGameActions.Device = _player.device;
-				player.Actions = myGameActions;
-				player.isKeyboard = false;
-
-				var faceController = FaceController.CreateWithJoystickBindings();
-				faceController.Device = _player.device;
-				player.faceController = faceController;
-			}
-
-			_player.active = true;
-			Debug.LogFormat("{0}Created new player [{1}]", className, player.playerIndex);
-			return player;
-		}
-
-		public static void StartRespawnPlayers()
-        {
-			inst.StartCoroutine(RespawnPlayers());
-        }
-
-		public static IEnumerator RespawnPlayers()
-        {
-			foreach (var player in players)
-            {
-				Destroy(player.health);
-				Destroy(player.gameObject);
-            }
-			players.Clear();
-			yield return new WaitForSeconds(0.1f);
-
-			GameManager.inst.SpawnPlayers(EventManager.inst.cam.transform.position);
-			yield break;
-        }
-
-		public static IEnumerator RespawnPlayer(int index)
-		{
-			Destroy(players[index].health);
-			Destroy(players[index].gameObject);
-
-			players.RemoveAt(index);
-
-			yield return new WaitForSeconds(0.1f);
-
-            var nextIndex = DataManager.inst.gameData.beatmapData.checkpoints.FindIndex(x => x.time > AudioManager.inst.CurrentAudioSource.time);
-			var prevIndex = nextIndex - 1;
-			if (prevIndex < 0)
-				prevIndex = 0;
-
-            if (DataManager.inst.gameData.beatmapData.checkpoints.Count > prevIndex && DataManager.inst.gameData.beatmapData.checkpoints[prevIndex] != null)
-				GameManager.inst.SpawnPlayers(DataManager.inst.gameData.beatmapData.checkpoints[prevIndex].pos);
-			else
-				GameManager.inst.SpawnPlayers(EventManager.inst.cam.transform.position);
-			yield break;
+			PlayerManager.LoadFromGlobalPlayersInArcade = LoadFromGlobalPlayersInArcade.Value;
 		}
 
 		public static void SaveLocalModels()
 		{
-			string location = RTFile.ApplicationDirectory + RTFile.basePath + "players.lsb";
+			string location = RTFile.BasePath + "players.lsb";
 
 			var jn = JSON.Parse("{}");
 
 			for (int i = 0; i < 4; i++)
 			{
-				jn["indexes"][i] = playerModelsIndex[i];
+				jn["indexes"][i] = PlayerManager.PlayerModelsIndex[i];
 			}
 
-			if (playerModels.Count > 2)
-				for (int i = 2; i < playerModels.Count; i++)
+			if (PlayerManager.PlayerModels.Count > 2)
+				for (int i = 2; i < PlayerManager.PlayerModels.Count; i++)
 				{
-					var current = playerModels.ElementAt(i).Value;
+					var current = PlayerManager.PlayerModels.ElementAt(i).Value;
 
 					jn["models"].Add((i - 2).ToString(), PlayerData.SavePlayer(current));
 				}
@@ -336,16 +191,22 @@ namespace CreativePlayers
 
 		public static IEnumerator LoadLocalModels()
         {
-			string location = RTFile.ApplicationDirectory + RTFile.basePath + "players.lsb";
+			string location = RTFile.BasePath + "players.lsb";
             if (RTFile.FileExists(location))
 			{
-				for (int i = 0; i < playerModels.Count; i++)
+				var list = new List<string>();
+				for (int i = 0; i < PlayerManager.PlayerModels.Count; i++)
 				{
-					if (playerModels.ElementAt(i).Key != "0" && playerModels.ElementAt(i).Key != "1")
+					if (PlayerManager.PlayerModels.ElementAt(i).Key != "0" && PlayerManager.PlayerModels.ElementAt(i).Key != "1")
 					{
-						Destroy(playerModels.ElementAt(i).Value.gm);
-						playerModels.Remove(playerModels.ElementAt(i).Key);
+						Destroy(PlayerManager.PlayerModels.ElementAt(i).Value.gm);
+						list.Add(PlayerManager.PlayerModels.ElementAt(i).Key);
 					}
+				}
+
+				foreach (var str in list)
+				{
+					PlayerManager.PlayerModels.Remove(str);
 				}
 
 				for (int i = 0; i < GameManager.inst.PlayerPrefabs.Length; i++)
@@ -361,14 +222,14 @@ namespace CreativePlayers
 
 				for (int i = 0; i < jn["indexes"].Count; i++)
                 {
-					playerModelsIndex[i] = jn["indexes"][i];
+					PlayerManager.PlayerModelsIndex[i] = jn["indexes"][i];
                 }
 
 				for (int i = 0; i < jn["models"].Count; i++)
 				{
 					var model = PlayerData.LoadPlayer(jn["models"][i]);
 					string name = (string)model.values["Base ID"];
-					playerModels.Add(name, model);
+					PlayerManager.PlayerModels.Add(name, model);
 
 					var newPrefab = Instantiate(GameManager.inst.PlayerPrefabs[0]);
 					newPrefab.SetActive(false);
@@ -381,9 +242,9 @@ namespace CreativePlayers
 			}
 			else
             {
-				for (int i = 0; i < playerModelsIndex.Count; i++)
+				for (int i = 0; i < PlayerManager.PlayerModelsIndex.Count; i++)
                 {
-					playerModelsIndex[i] = "0";
+					PlayerManager.PlayerModelsIndex[i] = "0";
                 }
             }
 			yield break;
@@ -392,10 +253,10 @@ namespace CreativePlayers
 		public static void CreateNewPlayerModel()
 		{
 			var newPrefab = Instantiate(GameManager.inst.PlayerPrefabs[0]);
-			var model = new PlayerModelClass.PlayerModel(newPrefab);
+			var model = new PlayerModel(newPrefab);
 			model.values["Base Name"] = "New Model";
 
-			playerModels.Add((string)model.values["Base ID"], model);
+			PlayerManager.PlayerModels.Add((string)model.values["Base ID"], model);
 
 			newPrefab.SetActive(false);
 			GameManager.inst.PlayerPrefabs.AddItem(newPrefab);
@@ -406,7 +267,7 @@ namespace CreativePlayers
         {
 			if (EditorManager.inst != null)
 				EditorManager.inst.DisplayNotification("Saving Player Models...", 1f, EditorManager.NotificationType.Warning);
-			foreach (var model in playerModels)
+			foreach (var model in PlayerManager.PlayerModels)
             {
 				if (model.Key != "0" && model.Key != "1")
                 {
@@ -433,13 +294,20 @@ namespace CreativePlayers
 
 			if (files.Length > 0)
 			{
-				for (int i = 0; i < playerModels.Count; i++)
+				var list = new List<string>();
+				for (int i = 0; i < PlayerManager.PlayerModels.Count; i++)
 				{
-					if (playerModels.ElementAt(i).Key != "0" && playerModels.ElementAt(i).Key != "1")
+					if (PlayerManager.PlayerModels.ElementAt(i).Key != "0" && PlayerManager.PlayerModels.ElementAt(i).Key != "1")
 					{
-						Destroy(playerModels.ElementAt(i).Value.gm);
-						playerModels.Remove(playerModels.ElementAt(i).Key);
+						Destroy(PlayerManager.PlayerModels.ElementAt(i).Value.gm);
+						list.Add(PlayerManager.PlayerModels.ElementAt(i).Key);
+
 					}
+                }
+
+				foreach (var str in list)
+                {
+					PlayerManager.PlayerModels.Remove(str);
 				}
 
 				for (int i = 0; i < GameManager.inst.PlayerPrefabs.Length; i++)
@@ -457,14 +325,17 @@ namespace CreativePlayers
 						var filename = Path.GetFileName(file).Replace(".lspl", "");
 
 						var model = PlayerData.LoadPlayer(filename);
-						string name = (string)model.values["Base ID"];
+						string id = (string)model.values["Base ID"];
 						model.filePath = file;
-						playerModels.Add(name, model);
+						if (!PlayerManager.PlayerModels.ContainsKey(id))
+						{
+							PlayerManager.PlayerModels.Add(id, model);
 
-						var newPrefab = Instantiate(GameManager.inst.PlayerPrefabs[0]);
-						newPrefab.SetActive(false);
-						GameManager.inst.PlayerPrefabs.AddItem(newPrefab);
-						model.gm = newPrefab;
+							var newPrefab = Instantiate(GameManager.inst.PlayerPrefabs[0]);
+							newPrefab.SetActive(false);
+							GameManager.inst.PlayerPrefabs.AddItem(newPrefab);
+							model.gm = newPrefab;
+						}
 					}
 				}
 
@@ -474,12 +345,15 @@ namespace CreativePlayers
 					LoadIndexes();
 				else if (LoadFromGlobalPlayersInArcade.Value)
                 {
-					playerModelsIndex[0] = Player1Index.Value;
-					playerModelsIndex[1] = Player2Index.Value;
-					playerModelsIndex[2] = Player3Index.Value;
-					playerModelsIndex[3] = Player4Index.Value;
+					for (int i = 0; i < PlayerManager.PlayerModelsIndex.Count; i++)
+                    {
+						PlayerManager.PlayerModelsIndex[i] = PlayerManager.PlayerIndexes[i].Value;
+					}
                 }
 			}
+
+			if (LoadFromGlobalPlayersInArcade.Value)
+				PlayerManager.AssignPlayerModels();
 
 			yield break;
         }
@@ -487,7 +361,7 @@ namespace CreativePlayers
 		public static void LoadIndexes()
 		{
 			inst.StartCoroutine(SoundLibraryPatch.SetAudioClips());
-			string location = RTFile.ApplicationDirectory + RTFile.basePath + "players.lsb";
+			string location = RTFile.BasePath + "players.lsb";
 
 			if (RTFile.FileExists(location))
 			{
@@ -496,9 +370,9 @@ namespace CreativePlayers
 
 				for (int i = 0; i < jn["indexes"].Count; i++)
 				{
-					if (playerModels.ContainsKey(jn["indexes"][i]))
+					if (PlayerManager.PlayerModels.ContainsKey(jn["indexes"][i]))
 					{
-						playerModelsIndex[i] = jn["indexes"][i];
+						PlayerManager.PlayerModelsIndex[i] = jn["indexes"][i];
 						Debug.LogFormat("{0}Loaded PlayerModel Index: {1}", className, jn["indexes"][i]);
 					}
 					else
@@ -511,23 +385,25 @@ namespace CreativePlayers
 			else if (!LoadFromGlobalPlayersInArcade.Value)
 			{
 				Debug.LogErrorFormat("{0}player.lspl file does not exist:, setting to default player", className);
-				for (int i = 0; i < playerModelsIndex.Count; i++)
+				for (int i = 0; i < PlayerManager.PlayerModelsIndex.Count; i++)
                 {
-					playerModelsIndex[i] = "0";
+					PlayerManager.PlayerModelsIndex[i] = "0";
                 }
             }
+
+			PlayerManager.AssignPlayerModels();
 		}
 
 		public static void ClearPlayerModels()
 		{
-			if (playerModels.Count > 2)
+			if (PlayerManager.PlayerModels.Count > 2)
 			{
-				for (int i = 2; i < playerModels.Count; i++)
+				for (int i = 2; i < PlayerManager.PlayerModels.Count; i++)
 				{
-					playerModels.Remove(playerModels.ElementAt(i).Key);
+					PlayerManager.PlayerModels.Remove(PlayerManager.PlayerModels.ElementAt(i).Key);
 				}
 
-				foreach (var keyValue in playerModels)
+				foreach (var keyValue in PlayerManager.PlayerModels)
                 {
 					if (keyValue.Key != "0" && keyValue.Key != "1")
                     {
@@ -535,7 +411,7 @@ namespace CreativePlayers
 						var model = keyValue.Value;
 
 						Destroy(model.gm);
-						playerModels.Remove(key);
+						PlayerManager.PlayerModels.Remove(key);
                     }
                 }
 			}
@@ -545,11 +421,11 @@ namespace CreativePlayers
 
 		public static void SetPlayerModel(int index, string id)
         {
-			if (playerModels.ContainsKey(id))
+			if (PlayerManager.PlayerModels.ContainsKey(id))
             {
-				playerModelsIndex[index] = id;
-				if (players.Count > index && players[index] != null)
-					players[index].updatePlayer();
+				PlayerManager.PlayerModelsIndex[index] = id;
+				if (PlayerManager.Players.Count > index && PlayerManager.Players[index])
+					PlayerManager.Players[index].Player?.UpdatePlayer();
 			}
         }
 
@@ -592,71 +468,6 @@ namespace CreativePlayers
 			}
 
 			StartLoadingModels();
-		}
-
-		public static DataManager.GameData.BeatmapData.Checkpoint GetClosestIndex(GameManager __instance, List<DataManager.GameData.BeatmapData.Checkpoint> checkpoints, float time)
-        {
-			return (DataManager.GameData.BeatmapData.Checkpoint)__instance.GetType().GetMethod("GetClosestIndex", BindingFlags.NonPublic | BindingFlags.Instance).Invoke(__instance, new object[] { checkpoints, time });
-        }
-
-		public static IEnumerator ReverseToCheckpointLoop(GameManager __instance)
-		{
-			if (!__instance.isReversing)
-			{
-				__instance.playingCheckpointAnimation = true;
-				__instance.isReversing = true;
-				DataManager.GameData.BeatmapData.Checkpoint checkpoint = GetClosestIndex(__instance, DataManager.inst.gameData.beatmapData.checkpoints, AudioManager.inst.CurrentAudioSource.time);
-				Debug.Log(string.Concat(new object[]
-				{
-					"Debug Checkpoint: ",
-					checkpoint.time,
-					" = ",
-					AudioManager.inst.CurrentAudioSource.time
-				}));
-				AudioManager.inst.SetPitch(-1.5f);
-				float time = AudioManager.inst.CurrentAudioSource.time;
-				float seconds = 2f;
-				AudioManager.inst.PlaySound("rewind");
-				//if (GameManager.UpdatedAudioPos != null)
-				//{
-				//	GameManager.UpdatedAudioPos(AudioManager.inst.CurrentAudioSource.isPlaying, AudioManager.inst.CurrentAudioSource.time, AudioManager.inst.CurrentAudioSource.pitch);
-				//}
-				DataManager.inst.gameData.beatmapData.GetWhichCheckpointBasedOnTime(AudioManager.inst.CurrentAudioSource.time);
-				yield return new WaitForSeconds(seconds);
-				float time2 = Mathf.Clamp(checkpoint.time + 0.01f, 0.1f, AudioManager.inst.CurrentAudioSource.clip.length);
-
-				if (EditorManager.inst == null && (DataManager.inst.GetSettingInt("ArcadeDifficulty", 0) == 2 || DataManager.inst.GetSettingInt("ArcadeDifficulty", 0) == 3))
-				{
-					time2 = 0.1f;
-				}
-				AudioManager.inst.CurrentAudioSource.time = time2;
-				__instance.gameState = GameManager.State.Playing;
-				AudioManager.inst.CurrentAudioSource.Play();
-				AudioManager.inst.SetPitch(__instance.getPitch());
-				//foreach (DataManager.GameData.BeatmapObject beatmapObject in DataManager.inst.gameData.beatmapObjects)
-				//{
-				//	if (ObjectManager.inst.beatmapGameObjects.ContainsKey(beatmapObject.id))
-				//	{
-				//		ObjectManager.GameObjectRef gameObjectRef = ObjectManager.inst.beatmapGameObjects[beatmapObject.id];
-				//		gameObjectRef.sequence.all.Goto(AudioManager.inst.CurrentAudioSource.time, false);
-				//		gameObjectRef.sequence.col.Goto(AudioManager.inst.CurrentAudioSource.time, false);
-				//	}
-				//}
-
-				__instance.UpdateEventSequenceTime();
-				__instance.isReversing = false;
-				yield return new WaitForSeconds(0.1f);
-
-				//if (GameManager.UpdatedAudioPos != null)
-				//{
-				//	GameManager.UpdatedAudioPos(AudioManager.inst.CurrentAudioSource.isPlaying, AudioManager.inst.CurrentAudioSource.time, AudioManager.inst.CurrentAudioSource.pitch);
-				//}
-
-				__instance.SpawnPlayers(checkpoint.pos);
-				__instance.playingCheckpointAnimation = false;
-				checkpoint = null;
-			}
-			yield break;
 		}
 	}
 }
