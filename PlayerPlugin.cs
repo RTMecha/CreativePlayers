@@ -41,11 +41,11 @@ namespace CreativePlayers
 		{
 			var num = index % 4;
 
-			if (PlayerManager.PlayerModelsIndex.ContainsKey(num) && PlayerManager.PlayerModels.ContainsKey(PlayerManager.PlayerModelsIndex[num]) && PlayerManager.PlayerModels[PlayerManager.PlayerModelsIndex[num]].gm != null && (!LoadFromGlobalPlayersInArcade.Value))
+			if (PlayerManager.PlayerModelsIndex.ContainsKey(num) && PlayerManager.PlayerModels.ContainsKey(PlayerManager.PlayerModelsIndex[num]) && (!LoadFromGlobalPlayersInArcade.Value))
 			{
 				return PlayerManager.PlayerModels[PlayerManager.PlayerModelsIndex[num]];
 			}
-			else if (PlayerManager.PlayerIndexes.Count > num && PlayerManager.PlayerModels.ContainsKey(PlayerManager.PlayerIndexes[num].Value.ToString()) && PlayerManager.PlayerModels[PlayerManager.PlayerIndexes[num].Value.ToString()].gm != null && LoadFromGlobalPlayersInArcade.Value)
+			else if (PlayerManager.PlayerIndexes.Count > num && PlayerManager.PlayerModels.ContainsKey(PlayerManager.PlayerIndexes[num].Value.ToString()) && LoadFromGlobalPlayersInArcade.Value)
 			{
 				return PlayerManager.PlayerModels[PlayerManager.PlayerIndexes[num].Value.ToString()];
 			}
@@ -174,8 +174,7 @@ namespace CreativePlayers
 				for (int i = 2; i < PlayerManager.PlayerModels.Count; i++)
 				{
 					var current = PlayerManager.PlayerModels.ElementAt(i).Value;
-
-					jn["models"].Add((i - 2).ToString(), PlayerData.SavePlayer(current));
+					jn["models"][(i - 2).ToString()] = current.ToJSON();
 				}
 
 			RTFile.WriteToFile(location, jn.ToString());
@@ -197,9 +196,8 @@ namespace CreativePlayers
 				var list = new List<string>();
 				for (int i = 0; i < PlayerManager.PlayerModels.Count; i++)
 				{
-					if (PlayerManager.PlayerModels.ElementAt(i).Key != "0" && PlayerManager.PlayerModels.ElementAt(i).Key != "1")
+					if (!PlayerModel.DefaultModels.Any(x => x.basePart.id == PlayerManager.PlayerModels.ElementAt(i).Key))
 					{
-						Destroy(PlayerManager.PlayerModels.ElementAt(i).Value.gm);
 						list.Add(PlayerManager.PlayerModels.ElementAt(i).Key);
 					}
 				}
@@ -227,18 +225,10 @@ namespace CreativePlayers
 
 				for (int i = 0; i < jn["models"].Count; i++)
 				{
-					var model = PlayerData.LoadPlayer(jn["models"][i]);
-					string name = (string)model.values["Base ID"];
+					var model = PlayerModel.Parse(jn["models"][i]);
+					string name = model.basePart.id;
 					PlayerManager.PlayerModels.Add(name, model);
-
-					var newPrefab = Instantiate(GameManager.inst.PlayerPrefabs[0]);
-					newPrefab.SetActive(false);
-					GameManager.inst.PlayerPrefabs.AddItem(newPrefab);
-
-					model.gm = newPrefab;
 				}
-
-				InputDataManager.inst.PlayerPrefabs = GameManager.inst.PlayerPrefabs;
 			}
 			else
             {
@@ -252,15 +242,10 @@ namespace CreativePlayers
 
 		public static void CreateNewPlayerModel()
 		{
-			var newPrefab = Instantiate(GameManager.inst.PlayerPrefabs[0]);
-			var model = new PlayerModel(newPrefab);
-			model.values["Base Name"] = "New Model";
+			var model = new PlayerModel(true);
+			model.basePart.name = "New Model";
 
-			PlayerManager.PlayerModels.Add((string)model.values["Base ID"], model);
-
-			newPrefab.SetActive(false);
-			GameManager.inst.PlayerPrefabs.AddItem(newPrefab);
-			model.gm = newPrefab;
+			PlayerManager.PlayerModels.Add((string)model.basePart.id, model);
 		}
 
 		public static void SavePlayerModels()
@@ -268,10 +253,10 @@ namespace CreativePlayers
 			if (EditorManager.inst != null)
 				EditorManager.inst.DisplayNotification("Saving Player Models...", 1f, EditorManager.NotificationType.Warning);
 			foreach (var model in PlayerManager.PlayerModels)
-            {
-				if (model.Key != "0" && model.Key != "1")
+			{
+				if (!PlayerModel.DefaultModels.Any(x => x.basePart.id == model.Key))
                 {
-					PlayerData.SavePlayer(model.Value, (string)model.Value.values["Base Name"]);
+					RTFile.WriteToFile(RTFile.ApplicationDirectory + "beatmaps/players/" + model.Value.basePart.name, model.Value.ToJSON());
                 }
 			}
 			if (EditorManager.inst != null)
@@ -297,9 +282,8 @@ namespace CreativePlayers
 				var list = new List<string>();
 				for (int i = 0; i < PlayerManager.PlayerModels.Count; i++)
 				{
-					if (PlayerManager.PlayerModels.ElementAt(i).Key != "0" && PlayerManager.PlayerModels.ElementAt(i).Key != "1")
+					if (!PlayerModel.DefaultModels.Any(x => x.basePart.id == PlayerManager.PlayerModels.ElementAt(i).Key))
 					{
-						Destroy(PlayerManager.PlayerModels.ElementAt(i).Value.gm);
 						list.Add(PlayerManager.PlayerModels.ElementAt(i).Key);
 
 					}
@@ -324,22 +308,14 @@ namespace CreativePlayers
 					{
 						var filename = Path.GetFileName(file).Replace(".lspl", "");
 
-						var model = PlayerData.LoadPlayer(filename);
-						string id = (string)model.values["Base ID"];
-						model.filePath = file;
+						var model = PlayerModel.Parse(JSON.Parse(RTFile.ReadFromFile(file)));
+						string id = model.basePart.id;
 						if (!PlayerManager.PlayerModels.ContainsKey(id))
 						{
 							PlayerManager.PlayerModels.Add(id, model);
-
-							var newPrefab = Instantiate(GameManager.inst.PlayerPrefabs[0]);
-							newPrefab.SetActive(false);
-							GameManager.inst.PlayerPrefabs.AddItem(newPrefab);
-							model.gm = newPrefab;
 						}
 					}
 				}
-
-				InputDataManager.inst.PlayerPrefabs = GameManager.inst.PlayerPrefabs;
 
 				if (EditorManager.inst == null && !LoadFromGlobalPlayersInArcade.Value)
 					LoadIndexes();
@@ -403,17 +379,20 @@ namespace CreativePlayers
 					PlayerManager.PlayerModels.Remove(PlayerManager.PlayerModels.ElementAt(i).Key);
 				}
 
+				var list = new List<string>();
 				foreach (var keyValue in PlayerManager.PlayerModels)
-                {
-					if (keyValue.Key != "0" && keyValue.Key != "1")
-                    {
-						var key = keyValue.Key;
-						var model = keyValue.Value;
-
-						Destroy(model.gm);
-						PlayerManager.PlayerModels.Remove(key);
+				{
+					var key = keyValue.Key;
+					if (!PlayerModel.DefaultModels.Any(x => x.basePart.id == key))
+					{
+						list.Add(keyValue.Key);
                     }
                 }
+
+				foreach (var key in list)
+                {
+					PlayerManager.PlayerModels.Remove(key);
+				}
 			}
 
 			StartLoadingModels();
@@ -425,7 +404,10 @@ namespace CreativePlayers
             {
 				PlayerManager.PlayerModelsIndex[index] = id;
 				if (PlayerManager.Players.Count > index && PlayerManager.Players[index])
+				{
+					PlayerManager.Players[index].CurrentPlayerModel = id;
 					PlayerManager.Players[index].Player?.UpdatePlayer();
+				}
 			}
         }
 
@@ -444,23 +426,21 @@ namespace CreativePlayers
 				{
 					if (Path.GetFileName(file).Contains(".lspl") && Path.GetFileName(file) != "regular.lspl" && Path.GetFileName(file) != "circle.lspl")
 					{
-						var filename = Path.GetFileName(file).Replace(".lspl", "");
-
-						if (RTFile.FileExists(filename))
+						if (RTFile.FileExists(file))
 						{
-							string json = FileManager.inst.LoadJSONFileRaw(filename);
+							string json = FileManager.inst.LoadJSONFileRaw(file);
 							var jn = JSON.Parse(json);
 
 							if ((string)jn["base"]["id"] == id)
 							{
-								var model = PlayerData.LoadPlayer(filename);
+								var model = PlayerModel.Parse(jn);
 
-								model.filePath = file.Replace(".lspl", "_clone.lspl");
+								var filePath = file.Replace(".lspl", "_clone.lspl");
 
-								model.values["Base Name"] += " Clone";
-								model.values["Base ID"] = LSFunctions.LSText.randomNumString(16);
+								model.basePart.name += " Clone";
+								model.basePart.id = LSFunctions.LSText.randomNumString(16);
 
-								PlayerData.SavePlayer(model, (string)model.values["Base Name"]);
+								RTFile.WriteToFile(filePath, model.ToJSON());
 							}
 						}
 					}
