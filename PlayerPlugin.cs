@@ -14,6 +14,7 @@ using UnityEngine.UI;
 using InControl;
 
 using SimpleJSON;
+using LSFunctions;
 
 using CreativePlayers.Patchers;
 
@@ -25,7 +26,7 @@ using RTFunctions.Functions.Managers;
 
 namespace CreativePlayers
 {
-    [BepInPlugin("com.mecha.creativeplayers", "Creative Players", "2.4.0")]
+    [BepInPlugin("com.mecha.creativeplayers", "Creative Players", "2.4.1")]
 	[BepInDependency("com.mecha.rtfunctions")]
 	[BepInProcess("Project Arrhythmia.exe")]
 	public class PlayerPlugin : BaseUnityPlugin
@@ -170,11 +171,11 @@ namespace CreativePlayers
 				jn["indexes"][i] = PlayerManager.PlayerModelsIndex[i];
 			}
 
-			if (PlayerManager.PlayerModels.Count > 2)
-				for (int i = 2; i < PlayerManager.PlayerModels.Count; i++)
+			if (PlayerManager.PlayerModels.Count > 5)
+				for (int i = 5; i < PlayerManager.PlayerModels.Count; i++)
 				{
 					var current = PlayerManager.PlayerModels.ElementAt(i).Value;
-					jn["models"][(i - 2).ToString()] = current.ToJSON();
+					jn["models"][i - 5] = current.ToJSON();
 				}
 
 			RTFile.WriteToFile(location, jn.ToString());
@@ -244,8 +245,9 @@ namespace CreativePlayers
 		{
 			var model = new PlayerModel(true);
 			model.basePart.name = "New Model";
+			model.basePart.id = LSText.randomNumString(16);
 
-			PlayerManager.PlayerModels.Add((string)model.basePart.id, model);
+			PlayerManager.PlayerModels.Add(model.basePart.id, model);
 		}
 
 		public static void SavePlayerModels()
@@ -256,7 +258,7 @@ namespace CreativePlayers
 			{
 				if (!PlayerModel.DefaultModels.Any(x => x.basePart.id == model.Key))
                 {
-					RTFile.WriteToFile(RTFile.ApplicationDirectory + "beatmaps/players/" + model.Value.basePart.name, model.Value.ToJSON());
+					RTFile.WriteToFile(RTFile.ApplicationDirectory + "beatmaps/players/" + model.Value.basePart.name.ToLower().Replace(" ", "_") + ".lspl", model.Value.ToJSON().ToString(3));
                 }
 			}
 			if (EditorManager.inst != null)
